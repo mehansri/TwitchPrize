@@ -32,7 +32,10 @@ export default function RootLayout({
         <Providers>
           {children}
         </Providers>
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+        <script 
+          src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"
+          async
+        ></script>
       </body>
     </html>
   );

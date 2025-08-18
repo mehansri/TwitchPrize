@@ -6,7 +6,7 @@ import { gsap } from "gsap";
 export default function Home() {
   const [boxes, setBoxes] = useState<{ [key: number]: { prize: string; value: number; opened: boolean } }>({});
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedBox, setSelectedBox] = useState<number | null>(null);
+
   const [revealedPrize, setRevealedPrize] = useState<{ prize: string; value: number } | null>(null);
   const modalRef = useRef(null);
 
@@ -37,7 +37,6 @@ export default function Home() {
     const tier = getPrizeTier(prizeData.value);
 
     setRevealedPrize(prizeData);
-    setSelectedBox(boxNum);
 
     const boxElement = document.querySelector(`[data-box-num='${boxNum}']`);
     if (boxElement) {
@@ -62,7 +61,6 @@ export default function Home() {
       duration: 0.5,
       autoAlpha: 0,
       onComplete: () => {
-        setSelectedBox(null);
         setRevealedPrize(null);
       },
     });
@@ -82,7 +80,7 @@ export default function Home() {
   return (
     <>
       <header>
-        <h1>🎁 Oogli's Mystery Box 🎁</h1>
+        <h1>🎁 Oogli&aposs Mystery Box 🎁</h1>
         <p>
           Watch live on <a href="https://twitch.tv/oogli" target="_blank" rel="noreferrer">twitch.tv/oogli</a>
         </p>
@@ -125,7 +123,7 @@ export default function Home() {
           <div className="modal-content">
             <span className="close" onClick={closeModal}>&times;</span>
             <h2>Congratulations!</h2>
-            <p>You've won:</p>
+            <p>You&apos;ve won:</p>
             <p className="prize-name">{revealedPrize.prize}</p>
             <p className="prize-value">Value: {revealedPrize.value}</p>
           </div>
