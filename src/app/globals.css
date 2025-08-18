@@ -1,0 +1,122 @@
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  background-color: #121212;
+  color: #f0f0f0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+header {
+  text-align: center;
+  padding: 1rem;
+}
+
+header a {
+  color: #9146FF;
+  text-decoration: none;
+  font-weight: bold;
+}
+
+#searchBox {
+  margin-top: 10px;
+  padding: 10px;
+  font-size: 16px;
+  width: 300px;
+  border-radius: 5px;
+  border: 1px solid #333;
+  background-color: #222;
+  color: #f0f0f0;
+}
+
+#boxGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
+  gap: 8px;
+  max-width: 1200px;
+  padding: 1rem;
+}
+
+.box {
+  width: 60px;
+  height: 60px;
+  background-color: #222;
+  border: 1px solid #444;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 18px;
+  color: white;
+  transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+}
+
+.box:hover {
+  transform: scale(1.1);
+  box-shadow: 0 0 15px #9146FF;
+}
+
+.box.opened {
+  background-color: #555;
+  cursor: default;
+  transform: scale(1);
+}
+
+.low {
+  border-color: #6c757d;
+}
+
+.medium {
+  border-color: #007bff;
+}
+
+.high {
+  border-color: #ffc107;
+}
+
+#prizeModal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  visibility: hidden;
+  opacity: 0;
+}
+
+.modal-content {
+  background-color: #222;
+  padding: 2rem;
+  border-radius: 10px;
+  text-align: center;
+  position: relative;
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+}
+
+.close {
+  position: absolute;
+  top: 10px;
+  right: 15px;
+  font-size: 24px;
+  cursor: pointer;
+}
+
+.prize-name {
+  font-size: 24px;
+  font-weight: bold;
+  color: #9146FF;
+}
+
+.prize-value {
+  font-size: 18px;
+  color: #f0f0f0;
+}
+
+#chatEmbed {
+  margin-top: 20px;
+}
