@@ -1,0 +1,12 @@
+# Prisma generated files
+src/generated/
+node_modules/.prisma/
+node_modules/@prisma/
+
+# Next.js build output
+.next/
+out/
+
+# Other generated files
+*.generated.*
+*.min.js
