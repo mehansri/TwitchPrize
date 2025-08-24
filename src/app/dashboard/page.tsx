@@ -29,7 +29,7 @@ function DashboardContent() {
 
   useEffect(() => {
     if (status === 'unauthenticated') {
-      router.push('/login');
+      router.push('/');
     }
   }, [status, router]);
 
@@ -70,7 +70,7 @@ function DashboardContent() {
 
   const handleSignOut = async () => {
     await signOut({ redirect: false });
-    router.push('/login');
+    router.push('/');
   };
 
   const handlePayment = async () => {
