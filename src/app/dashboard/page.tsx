@@ -7,7 +7,9 @@ import { loadStripe } from '@stripe/stripe-js';
 
 // Make sure to call `loadStripe` outside of a component's render to avoid
 // recreating the `Stripe` object on every render.
-const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
+const stripePromise = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
+  ? loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY)
+  : Promise.resolve(null);
 
 interface Payment {
   id: string;
@@ -36,11 +38,11 @@ export default function DashboardPage() {
     if (searchParams.get('payment_success')) {
       setMessage({ type: 'success', text: 'Payment successful!' });
       // Clear the URL parameter after showing the message
-      router.replace('/dashboard', undefined, { shallow: true });
+      router.replace('/dashboard');
     } else if (searchParams.get('payment_cancelled')) {
       setMessage({ type: 'error', text: 'Payment cancelled.' });
       // Clear the URL parameter after showing the message
-      router.replace('/dashboard', undefined, { shallow: true });
+      router.replace('/dashboard');
     }
   }, [searchParams, router]);
 
@@ -79,6 +81,12 @@ export default function DashboardPage() {
       // 1. Get Stripe.js instance
       const stripe = await stripePromise;
 
+      if (!stripe) {
+        setMessage({ type: 'error', text: 'Stripe is not initialized. Please check your configuration.' });
+        setLoading(false);
+        return;
+      }
+
       // 2. Call your API to create a checkout session
       const response = await fetch('/api/create-checkout-session', {
         method: 'POST',
@@ -93,12 +101,12 @@ export default function DashboardPage() {
       }
 
       // 3. Redirect to Stripe Checkout
-      const { error: stripeError } = await stripe!.redirectToCheckout({
+      const { error: stripeError } = await stripe.redirectToCheckout({
         sessionId,
       });
 
       if (stripeError) {
-        setMessage({ type: 'error', text: stripeError.message });
+        setMessage({ type: 'error', text: stripeError.message ?? 'An unknown Stripe error occurred.' });
       }
     } catch (err) {
       setMessage({ type: 'error', text: 'An unexpected error occurred.' });
