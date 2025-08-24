@@ -80,7 +80,7 @@ export default function Home() {
   return (
     <>
       <header>
-        <h1>🎁 Oogli&aposs Mystery Box 🎁</h1>
+        <h1>🎁 Oogli&apos;s Mystery Box 🎁</h1>
         <p>
           Watch live on <a href="https://twitch.tv/oogli" target="_blank" rel="noreferrer">twitch.tv/oogli</a>
         </p>
