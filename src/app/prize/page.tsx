@@ -56,6 +56,39 @@ export default function Home() {
     audio.play();
   };
 
+  const pickRandomBox = () => {
+    // Get all unopened boxes
+    const unopenedBoxes = Object.keys(boxes).filter(boxNum => !boxes[parseInt(boxNum)].opened);
+    
+    if (unopenedBoxes.length === 0) {
+      alert("All boxes have been opened!");
+      return;
+    }
+    
+    // Pick a random unopened box
+    const randomIndex = Math.floor(Math.random() * unopenedBoxes.length);
+    const randomBoxNum = parseInt(unopenedBoxes[randomIndex]);
+    
+    // Scroll to the random box
+    const boxElement = document.querySelector(`[data-box-num='${randomBoxNum}']`);
+    if (boxElement) {
+      boxElement.scrollIntoView({ behavior: "smooth", block: "center" });
+      
+      // Add a brief highlight effect
+      gsap.to(boxElement, {
+        duration: 0.3,
+        scale: 1.3,
+        boxShadow: "0 0 20px #9146FF",
+        repeat: 2,
+        yoyo: true,
+        onComplete: () => {
+          // Reveal the box after the highlight effect
+          revealBox(randomBoxNum);
+        }
+      });
+    }
+  };
+
   const closeModal = () => {
     gsap.to(modalRef.current, {
       duration: 0.5,
@@ -95,6 +128,25 @@ export default function Home() {
           <a href="/register" style={{ marginLeft: '10px', color: '#007bff' }}>Register</a>
           <a href="/login" style={{ marginLeft: '10px', color: '#007bff' }}>Login</a>
         </nav>
+        <button 
+          onClick={pickRandomBox}
+          style={{ 
+            marginTop: '15px',
+            padding: '12px 24px',
+            fontSize: '16px',
+            backgroundColor: '#007bff',
+            color: 'white',
+            border: 'none',
+            borderRadius: '5px',
+            cursor: 'pointer',
+            fontWeight: 'bold',
+            transition: 'background-color 0.2s ease-in-out'
+          }}
+          onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#0056b3'}
+          onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#007bff'}
+        >
+          🎲 Pick Random Box
+        </button>
       </header>
       <main id="boxGrid">
         {Object.keys(boxes).map((boxNumStr) => {
@@ -130,7 +182,7 @@ export default function Home() {
       </div>
       <aside id="chatEmbed">
         <iframe
-          src="https://www.twitch.tv/embed/oogli/chat?parent=localhost"
+          src="https://www.twitch.tv/embed/oogli/chat?parent=https://twitch-prize.vercel.app/"
           frameBorder="0"
           scrolling="no"
           height="500"
