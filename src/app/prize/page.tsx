@@ -94,7 +94,6 @@ export default function Home() {
         <nav>
           <a href="/register" style={{ marginLeft: '10px', color: '#007bff' }}>Register</a>
           <a href="/login" style={{ marginLeft: '10px', color: '#007bff' }}>Login</a>
-          <a href="/payment" style={{ marginLeft: '10px', color: '#007bff' }}>Payment</a>
         </nav>
       </header>
       <main id="boxGrid">
