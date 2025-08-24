@@ -182,7 +182,7 @@ export default function Home() {
       </div>
       <aside id="chatEmbed">
         <iframe
-          src="https://www.twitch.tv/embed/oogli/chat?parent=https://twitch-prize.vercel.app/"
+          src="https://www.twitch.tv/embed/oogli/chat?parent=twitch-prize.vercel.app"
           frameBorder="0"
           scrolling="no"
           height="500"
