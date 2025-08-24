@@ -173,9 +173,9 @@ function DashboardContent() {
 
             {/* Payment Section */}
             <div className="bg-white/5 rounded-lg p-6 border border-white/10">
-              <h3 className="text-lg font-semibold text-white mb-3">Premium Features</h3>
+              <h3 className="text-lg font-semibold text-white mb-3">Unlock Your Prize </h3>
               <p className="text-gray-300 mb-4">
-                Unlock premium features with a one-time payment of $10.
+                 Unlock a prize with a one-time payment of $5.
               </p>
               <button
                 onClick={handlePayment}
@@ -186,7 +186,7 @@ function DashboardContent() {
                     : 'bg-blue-600 hover:bg-blue-700'
                 } text-white`}
               >
-                {loading ? 'Processing...' : 'Buy Premium for $10'}
+                {loading ? 'Processing...' : 'Unlock Prize for $5'}
               </button>
             </div>
 

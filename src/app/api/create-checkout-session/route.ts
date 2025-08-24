@@ -42,10 +42,10 @@ export async function POST(req: NextRequest) {
           price_data: {
             currency: 'usd',
             product_data: {
-              name: 'Premium Plan',
-              description: 'Access to premium features',
+              name: 'Prize Unlock',
+              description: 'Unlock a special prize with this one-time payment',
             },
-            unit_amount: 1000, // $10.00 in cents
+            unit_amount: 500, // $10.00 in cents
           },
           quantity: 1,
         },
