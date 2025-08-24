@@ -19,7 +19,7 @@ interface Payment {
   createdAt: string;
 }
 
-export default function DashboardPage() {
+function DashboardContent() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -235,4 +235,14 @@ export default function DashboardPage() {
       </div>
     </div>
   );
-} 
+}
+
+import { Suspense } from "react";
+
+export default function DashboardPageWithSuspense() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <DashboardContent />
+    </Suspense>
+  );
+}
