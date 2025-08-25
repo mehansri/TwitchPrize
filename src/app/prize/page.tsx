@@ -25,7 +25,7 @@ const prizePool = [
 
 // 🔀 Generate 1000 shuffled boxes
 function generateBoxes() {
-  let allPrizes: { prize: string; value: number; opened: boolean }[] = [];
+  const allPrizes: { prize: string; value: number; opened: boolean }[] = [];
 
   prizePool.forEach((item) => {
     for (let i = 0; i < item.count; i++) {
