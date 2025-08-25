@@ -2,6 +2,9 @@
 
 import { useState, useEffect, useRef } from "react";
 import { gsap } from "gsap";
+import { useSession, signIn } from "next-auth/react";
+import { useRouter } from "next/navigation";
+import { isUserAuthorized } from "@/lib/config";
 
 // 🎁 Define your prize pool with counts (odds still apply)
 const prizePool = [
@@ -71,15 +74,47 @@ function saveBoxesToStorage(boxes: { [key: number]: { prize: string; value: numb
 }
 
 export default function Home() {
+  const { data: session, status } = useSession();
+  const router = useRouter();
   const [boxes, setBoxes] = useState<{ [key: number]: { prize: string; value: number; opened: boolean } }>({});
   const [searchTerm, setSearchTerm] = useState("");
   const [revealedPrize, setRevealedPrize] = useState<{ prize: string; value: number } | null>(null);
   const modalRef = useRef(null);
 
+  // 🔐 Check authentication and authorization
   useEffect(() => {
-    const loadedBoxes = loadBoxesFromStorage();
-    setBoxes(loadedBoxes);
-  }, []);
+    if (status === "loading") return; // Still loading
+
+    if (status === "unauthenticated") {
+      // Not logged in, redirect to login
+      signIn();
+      return;
+    }
+
+    if (status === "authenticated" && session?.user) {
+      // Check if user is authorized
+      const isAuthorized = isUserAuthorized(session.user.email, session.user.id);
+      
+      if (!isAuthorized) {
+        // Not authorized, redirect to home page
+        alert("Access denied. You are not authorized to view this page.");
+        router.push("/");
+        return;
+      }
+    }
+  }, [session, status, router]);
+
+  useEffect(() => {
+    // Only load boxes if user is authorized
+    if (status === "authenticated" && session?.user) {
+      const isAuthorized = isUserAuthorized(session.user.email, session.user.id);
+      
+      if (isAuthorized) {
+        const loadedBoxes = loadBoxesFromStorage();
+        setBoxes(loadedBoxes);
+      }
+    }
+  }, [session, status]);
 
   const revealBox = (boxNum: number) => {
     if (boxes[boxNum].opened) return; // prevent duplicate pick
@@ -162,6 +197,53 @@ export default function Home() {
   // Count opened boxes for display
   const openedCount = Object.values(boxes).filter(box => box.opened).length;
   const totalBoxes = Object.keys(boxes).length;
+
+  // Show loading state while checking authentication
+  if (status === "loading") {
+    return (
+      <div style={{ 
+        display: "flex", 
+        justifyContent: "center", 
+        alignItems: "center", 
+        height: "100vh",
+        fontSize: "18px"
+      }}>
+        Loading...
+      </div>
+    );
+  }
+
+  // Show unauthorized message if not authenticated or not authorized
+  if (status === "unauthenticated" || 
+      (status === "authenticated" && session?.user && 
+       !isUserAuthorized(session.user.email, session.user.id))) {
+    return (
+      <div style={{ 
+        display: "flex", 
+        justifyContent: "center", 
+        alignItems: "center", 
+        height: "100vh",
+        flexDirection: "column",
+        gap: "20px"
+      }}>
+        <h1>🔒 Access Restricted</h1>
+        <p>You are not authorized to view this page.</p>
+        <button 
+          onClick={() => router.push("/")}
+          style={{
+            padding: "10px 20px",
+            backgroundColor: "#007bff",
+            color: "white",
+            border: "none",
+            borderRadius: "5px",
+            cursor: "pointer"
+          }}
+        >
+          Go Home
+        </button>
+      </div>
+    );
+  }
 
   return (
     <>
