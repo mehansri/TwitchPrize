@@ -372,7 +372,7 @@ function ManualPrizeOpener({ onPrizeOpened }: { onPrizeOpened: (prize: string, u
       {prizeSelectionMode === 'random' && (
         <div style={{ marginBottom: "15px" }}>
           <div style={{ color: "#fff", padding: "10px", backgroundColor: "rgba(255, 255, 255, 0.1)", borderRadius: "5px" }}>
-            🎲 Random prize will be selected from the prize pool when you click "Open Prize"
+            🎲 Random prize will be selected from the prize pool when you click &quot;Open Prize&quot;
           </div>
         </div>
       )}
