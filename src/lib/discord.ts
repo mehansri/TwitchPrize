@@ -294,6 +294,50 @@ export class DiscordNotifier {
       avatar_url: 'https://cdn.discordapp.com/emojis/1279952661629419520.webp?size=96&quality=lossless',
     });
   }
+
+  // Manual prize opened by admin
+  async notifyManualPrizeOpened(adminName: string, userName: string, prizeName: string, prizeValue: number): Promise<void> {
+    const embed: DiscordEmbed = {
+      title: '🎁 Manual Prize Opened',
+      description: 'An admin has manually opened a prize for a user.',
+      color: 0x9b59b6, // Purple
+      fields: [
+        {
+          name: '👨‍💼 Admin',
+          value: adminName,
+          inline: true,
+        },
+        {
+          name: '👤 User',
+          value: userName,
+          inline: true,
+        },
+        {
+          name: '🎁 Prize',
+          value: prizeName,
+          inline: true,
+        },
+        {
+          name: '💰 Value',
+          value: `$${(prizeValue / 100).toFixed(2)}`,
+          inline: true,
+        },
+        {
+          name: '⏰ Time',
+          value: new Date().toLocaleString(),
+          inline: true,
+        },
+      ],
+      timestamp: new Date().toISOString(),
+    };
+
+    await this.sendWebhook({
+      content: '🎁 **Manual Prize Opened** - Admin manually opened prize for user',
+      embeds: [embed],
+      username: 'Prize Bot',
+      avatar_url: 'https://cdn.discordapp.com/emojis/1279952661629419520.webp?size=96&quality=lossless',
+    });
+  }
 }
 
 // Export singleton instance

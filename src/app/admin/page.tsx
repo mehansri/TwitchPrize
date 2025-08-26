@@ -15,7 +15,7 @@ interface PrizeClaim {
     name: string;
     email: string;
   };
-  payment: {
+  payment?: {
     amount: number;
     currency: string;
   };
@@ -281,7 +281,7 @@ export default function AdminDashboard() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm text-gray-300">
-                          ${(claim.payment.amount / 100).toFixed(2)} {claim.payment.currency.toUpperCase()}
+                          {claim.payment ? `$${(claim.payment.amount / 100).toFixed(2)} ${claim.payment.currency.toUpperCase()}` : 'Manual Prize'}
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
@@ -359,7 +359,7 @@ export default function AdminDashboard() {
                 <span className="font-medium">Email:</span> {selectedClaim.user.email}
               </div>
               <div>
-                <span className="font-medium">Payment:</span> ${(selectedClaim.payment.amount / 100).toFixed(2)} {selectedClaim.payment.currency.toUpperCase()}
+                <span className="font-medium">Payment:</span> {selectedClaim.payment ? `$${(selectedClaim.payment.amount / 100).toFixed(2)} ${selectedClaim.payment.currency.toUpperCase()}` : 'Manual Prize (No Payment)'}
               </div>
               <div>
                 <span className="font-medium">Status:</span> {getStatusText(selectedClaim.status)}
