@@ -18,10 +18,10 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 
-    // Fetch payments that do not have an associated prize claim
-    const paymentsWithoutClaims = await prisma.payment.findMany({
+    // Fetch users with pending prize claims
+    const pendingClaims = await prisma.prizeClaim.findMany({
       where: {
-        prizeClaim: null,
+        status: 'PENDING_ADMIN_OPEN',
       },
       include: {
         user: {
@@ -31,6 +31,12 @@ export async function GET(request: NextRequest) {
             email: true,
           },
         },
+        payment: {
+          select: {
+            amount: true,
+            currency: true,
+          },
+        },
       },
       orderBy: {
         createdAt: 'asc',
@@ -38,13 +44,13 @@ export async function GET(request: NextRequest) {
     });
 
     // Transform the data to match the expected format
-    const pendingUsers = paymentsWithoutClaims.map(payment => ({
-      id: payment.user.id,
-      name: payment.user.name,
-      email: payment.user.email,
-      paymentAmount: payment.amount || 0,
-      paymentId: payment.id,
-      createdAt: payment.createdAt,
+    const pendingUsers = pendingClaims.map(claim => ({
+      id: claim.user.id,
+      name: claim.user.name,
+      email: claim.user.email,
+      paymentAmount: claim.payment?.amount || 0,
+      claimId: claim.id,
+      createdAt: claim.createdAt,
     }));
 
     return NextResponse.json({

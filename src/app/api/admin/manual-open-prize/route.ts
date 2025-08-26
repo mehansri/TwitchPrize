@@ -44,16 +44,30 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
-    // Check if the user already has an opened prize that has not been delivered
-    const existingClaim = await prisma.prizeClaim.findFirst({
-        where: {
-            userId: user.id,
-            status: 'OPENED',
-        },
-    });
-
-    if (existingClaim) {
-        return NextResponse.json({ error: 'User already has an opened prize that has not been delivered.' }, { status: 400 });
+    // If a paymentId is provided, check if this specific payment already has an opened prize.
+    // Otherwise (manual opening without paymentId), check if the user has any opened prize.
+    if (paymentId) {
+        const existingClaimForThisPayment = await prisma.prizeClaim.findFirst({
+            where: {
+                paymentId: paymentId,
+                status: 'OPENED',
+            },
+        });
+        if (existingClaimForThisPayment) {
+            return NextResponse.json({ error: 'This payment already has an opened prize.' }, { status: 400 });
+        }
+    } else {
+        // This is a truly manual opening (no paymentId provided)
+        // Check if the user already has an opened prize that has not been delivered
+        const existingClaim = await prisma.prizeClaim.findFirst({
+            where: {
+                userId: user.id,
+                status: 'OPENED',
+            },
+        });
+        if (existingClaim) {
+            return NextResponse.json({ error: 'User already has an opened prize that has not been delivered.' }, { status: 400 });
+        }
     }
 
     const finalPrizeName = prizeName;
@@ -79,30 +93,49 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Create a manual prize claim (without payment)
-    const prizeClaim = await prisma.prizeClaim.create({
-      data: {
-        userId: user.id,
-        status: 'OPENED', // Directly mark as opened since it's manual
-        openedAt: new Date(),
-        notes: `Manually opened by admin ${session.user.email} from box #${boxNumber}`,
-        prizeTypeId: prizeType.id,
-        paymentId: paymentId || null, // Link to payment if provided
-      },
-      include: {
-        user: true,
-        prizeType: true,
-      },
-    });
+    let prizeClaim;
 
-    // Explicitly connect the prizeClaim to the Payment if paymentId is provided
     if (paymentId) {
-      await prisma.payment.update({
-        where: { id: paymentId },
+      // Find the existing PENDING_ADMIN_OPEN prize claim for this payment
+      prizeClaim = await prisma.prizeClaim.findFirst({
+        where: {
+          paymentId: paymentId,
+          status: 'PENDING_ADMIN_OPEN',
+        },
+      });
+
+      if (!prizeClaim) {
+        return NextResponse.json({ error: 'No pending prize claim found for this payment.' }, { status: 404 });
+      }
+
+      // Update the existing prize claim
+      prizeClaim = await prisma.prizeClaim.update({
+        where: { id: prizeClaim.id },
         data: {
-          prizeClaim: {
-            connect: { id: prizeClaim.id },
-          },
+          status: 'OPENED',
+          openedAt: new Date(),
+          notes: `Opened by admin ${session.user.email} from box #${boxNumber} for payment ${paymentId}`,
+          prizeTypeId: prizeType.id,
+        },
+        include: {
+          user: true,
+          prizeType: true,
+        },
+      });
+    } else {
+      // Create a manual prize claim (without payment)
+      prizeClaim = await prisma.prizeClaim.create({
+        data: {
+          userId: user.id,
+          status: 'OPENED', // Directly mark as opened since it's manual
+          openedAt: new Date(),
+          notes: `Manually opened by admin ${session.user.email} from box #${boxNumber}`,
+          prizeTypeId: prizeType.id,
+          paymentId: null, // No payment link for truly manual claims
+        },
+        include: {
+          user: true,
+          prizeType: true,
         },
       });
     }
