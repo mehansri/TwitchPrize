@@ -95,21 +95,29 @@ function getGlowColor(glow: string): string {
   }
 }
 
-// 🎯 Manual prize opening component
-function ManualPrizeOpener({ onPrizeOpened }: { onPrizeOpened: (prize: string, userEmail: string) => void }) {
-  const [userEmail, setUserEmail] = useState("");
-  const [selectedPrize, setSelectedPrize] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-  const [pendingUsers, setPendingUsers] = useState<Array<{ id: string; name: string; email: string; paymentAmount: number }>>([]);
-  const [loadingUsers, setLoadingUsers] = useState(false);
-  const [boxNumber, setBoxNumber] = useState("");
-  const [prizeSelectionMode, setPrizeSelectionMode] = useState<'manual' | 'box' | 'random'>('manual');
 
-  // Fetch pending users on component mount
-  useEffect(() => {
-    fetchPendingUsers();
-  }, []);
+
+export default function Home() {
+  const { data: session, status } = useSession();
+  const router = useRouter();
+  const [boxes, setBoxes] = useState<{ [key: number]: { prize: string; value: number; opened: boolean; glow: string } }>({});
+  const [searchTerm, setSearchTerm] = useState("");
+  const [revealedPrize, setRevealedPrize] = useState<{ prize: string; value: number; glow: string } | null>(null);
+  const [showManualOpener, setShowManualOpener] = useState(false);
+  const [manualUserEmail, setManualUserEmail] = useState("");
+  const [userSelectionMode, setUserSelectionMode] = useState<'pending' | 'manual'>('pending');
+  interface PendingUser {
+    id: string;
+    name: string;
+    email: string;
+    paymentAmount: number;
+    paymentId: string;
+    createdAt: string;
+  }
+  const [pendingUsers, setPendingUsers] = useState<PendingUser[]>([]);
+  const [loadingUsers, setLoadingUsers] = useState(false);
+  const [selectedUser, setSelectedUser] = useState("");
+  const modalRef = useRef(null);
 
   const fetchPendingUsers = async () => {
     setLoadingUsers(true);
@@ -128,283 +136,11 @@ function ManualPrizeOpener({ onPrizeOpened }: { onPrizeOpened: (prize: string, u
     }
   };
 
-  const handleManualOpen = async () => {
-    if (!userEmail) {
-      setMessage({ type: 'error', text: 'Please select a user.' });
-      return;
+  useEffect(() => {
+    if (showManualOpener) {
+      fetchPendingUsers();
     }
-
-    let finalPrizeName = selectedPrize;
-
-    // Handle different prize selection modes
-    if (prizeSelectionMode === 'box') {
-      if (!boxNumber) {
-        setMessage({ type: 'error', text: 'Please enter a box number.' });
-        return;
-      }
-      const boxNum = parseInt(boxNumber);
-      if (boxNum < 1 || boxNum > 1000) {
-        setMessage({ type: 'error', text: 'Box number must be between 1 and 1000.' });
-        return;
-      }
-      // Get prize from box number (this would need to match your box generation logic)
-      finalPrizeName = getPrizeFromBoxNumber(boxNum);
-    } else if (prizeSelectionMode === 'random') {
-      // Pick a random prize from the pool
-      const randomIndex = Math.floor(Math.random() * prizePool.length);
-      finalPrizeName = prizePool[randomIndex].prize;
-    } else if (!selectedPrize) {
-      setMessage({ type: 'error', text: 'Please select a prize.' });
-      return;
-    }
-
-    setIsLoading(true);
-    setMessage(null);
-
-    try {
-      const response = await fetch('/api/admin/manual-open-prize', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          userEmail,
-          prizeName: finalPrizeName,
-          boxNumber: prizeSelectionMode === 'box' ? boxNumber : undefined,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        setMessage({ type: 'success', text: `Prize "${finalPrizeName}" opened for ${userEmail}!` });
-        onPrizeOpened(finalPrizeName, userEmail);
-        setUserEmail("");
-        setSelectedPrize("");
-        setBoxNumber("");
-        setPrizeSelectionMode('manual');
-        // Refresh pending users list
-        await fetchPendingUsers();
-      } else {
-        setMessage({ type: 'error', text: data.error || 'Failed to open prize.' });
-      }
-    } catch (error) {
-      setMessage({ type: 'error', text: 'An error occurred while opening the prize.' });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // Helper function to get prize from box number (matches your box generation logic)
-  const getPrizeFromBoxNumber = (boxNum: number): string => {
-    // Generate the same box mapping as in the backend
-    const allPrizes: string[] = [];
-    prizePool.forEach((item) => {
-      for (let i = 0; i < item.count; i++) {
-        allPrizes.push(item.prize);
-      }
-    });
-
-    // Use a deterministic seed based on box number
-    const seed = boxNum - 1; // Convert to 0-based index
-    if (seed >= 0 && seed < allPrizes.length) {
-      return allPrizes[seed];
-    }
-
-    // Fallback to random if box number is out of range
-    const randomIndex = Math.floor(Math.random() * prizePool.length);
-    return prizePool[randomIndex].prize;
-  };
-
-  return (
-    <div style={{
-      background: "rgba(255, 255, 255, 0.1)",
-      padding: "20px",
-      borderRadius: "10px",
-      marginBottom: "20px",
-      border: "1px solid rgba(255, 255, 255, 0.2)"
-    }}>
-      <h3 style={{ color: "#fff", marginBottom: "15px", fontSize: "18px" }}>
-        🎁 Manual Prize Opening (Admin Only)
-      </h3>
-      
-      {message && (
-        <div style={{
-          padding: "10px",
-          borderRadius: "5px",
-          marginBottom: "15px",
-          backgroundColor: message.type === 'success' ? "rgba(40, 167, 69, 0.2)" : "rgba(220, 53, 69, 0.2)",
-          border: `1px solid ${message.type === 'success' ? "#28a745" : "#dc3545"}`,
-          color: message.type === 'success' ? "#28a745" : "#dc3545"
-        }}>
-          {message.text}
-        </div>
-      )}
-
-      {/* User Selection */}
-      <div style={{ marginBottom: "15px" }}>
-        <label style={{ color: "#fff", display: "block", marginBottom: "5px", fontWeight: "bold" }}>
-          👤 Select User:
-        </label>
-        <select
-          value={userEmail}
-          onChange={(e) => setUserEmail(e.target.value)}
-          style={{
-            padding: "8px 12px",
-            borderRadius: "5px",
-            border: "1px solid #ccc",
-            width: "100%",
-            backgroundColor: "#fff"
-          }}
-        >
-          <option value="">Select a user...</option>
-          {loadingUsers ? (
-            <option value="" disabled>Loading pending users...</option>
-          ) : pendingUsers.length > 0 ? (
-            pendingUsers.map((user) => (
-              <option key={user.id} value={user.email}>
-                {user.name || user.email} - ${(user.paymentAmount / 100).toFixed(2)} paid
-              </option>
-            ))
-          ) : (
-            <option value="" disabled>No pending users found</option>
-          )}
-        </select>
-        {pendingUsers.length > 0 && (
-          <div style={{ marginTop: "5px", fontSize: "12px", color: "#ccc" }}>
-            Found {pendingUsers.length} user(s) with pending payments
-          </div>
-        )}
-      </div>
-
-      {/* Prize Selection Mode */}
-      <div style={{ marginBottom: "15px" }}>
-        <label style={{ color: "#fff", display: "block", marginBottom: "5px", fontWeight: "bold" }}>
-          🎁 Prize Selection Method:
-        </label>
-        <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
-          <label style={{ display: "flex", alignItems: "center", color: "#fff", cursor: "pointer" }}>
-            <input
-              type="radio"
-              name="prizeMode"
-              value="manual"
-              checked={prizeSelectionMode === 'manual'}
-              onChange={(e) => setPrizeSelectionMode(e.target.value as 'manual')}
-              style={{ marginRight: "5px" }}
-            />
-            Manual Selection
-          </label>
-          <label style={{ display: "flex", alignItems: "center", color: "#fff", cursor: "pointer" }}>
-            <input
-              type="radio"
-              name="prizeMode"
-              value="box"
-              checked={prizeSelectionMode === 'box'}
-              onChange={(e) => setPrizeSelectionMode(e.target.value as 'box')}
-              style={{ marginRight: "5px" }}
-            />
-            Box Number
-          </label>
-          <label style={{ display: "flex", alignItems: "center", color: "#fff", cursor: "pointer" }}>
-            <input
-              type="radio"
-              name="prizeMode"
-              value="random"
-              checked={prizeSelectionMode === 'random'}
-              onChange={(e) => setPrizeSelectionMode(e.target.value as 'random')}
-              style={{ marginRight: "5px" }}
-            />
-            Random Pick
-          </label>
-        </div>
-      </div>
-
-      {/* Prize Selection Based on Mode */}
-      {prizeSelectionMode === 'manual' && (
-        <div style={{ marginBottom: "15px" }}>
-          <label style={{ color: "#fff", display: "block", marginBottom: "5px", fontWeight: "bold" }}>
-            🎁 Select Prize:
-          </label>
-          <select
-            value={selectedPrize}
-            onChange={(e) => setSelectedPrize(e.target.value)}
-            style={{
-              padding: "8px 12px",
-              borderRadius: "5px",
-              border: "1px solid #ccc",
-              width: "100%",
-              backgroundColor: "#fff"
-            }}
-          >
-            <option value="">Select a prize...</option>
-            {prizePool.map((prize) => (
-              <option key={prize.prize} value={prize.prize}>
-                {prize.prize} (${prize.value})
-              </option>
-            ))}
-          </select>
-        </div>
-      )}
-
-      {prizeSelectionMode === 'box' && (
-        <div style={{ marginBottom: "15px" }}>
-          <label style={{ color: "#fff", display: "block", marginBottom: "5px", fontWeight: "bold" }}>
-            📦 Enter Box Number (1-1000):
-          </label>
-          <input
-            type="number"
-            placeholder="Enter box number..."
-            value={boxNumber}
-            onChange={(e) => setBoxNumber(e.target.value)}
-            min="1"
-            max="1000"
-            style={{
-              padding: "8px 12px",
-              borderRadius: "5px",
-              border: "1px solid #ccc",
-              width: "100%",
-              backgroundColor: "#fff"
-            }}
-          />
-        </div>
-      )}
-
-      {prizeSelectionMode === 'random' && (
-        <div style={{ marginBottom: "15px" }}>
-          <div style={{ color: "#fff", padding: "10px", backgroundColor: "rgba(255, 255, 255, 0.1)", borderRadius: "5px" }}>
-            🎲 Random prize will be selected from the prize pool when you click &quot;Open Prize&quot;
-          </div>
-        </div>
-      )}
-
-      <button
-        onClick={handleManualOpen}
-        disabled={isLoading || !userEmail || (prizeSelectionMode === 'manual' && !selectedPrize) || (prizeSelectionMode === 'box' && !boxNumber)}
-        style={{
-          padding: "10px 20px",
-          backgroundColor: isLoading ? "#6c757d" : "#007bff",
-          color: "white",
-          border: "none",
-          borderRadius: "5px",
-          cursor: isLoading ? "not-allowed" : "pointer",
-          fontWeight: "bold",
-          width: "100%"
-        }}
-      >
-        {isLoading ? "Opening..." : `🎁 Open Prize for User${prizeSelectionMode === 'random' ? ' (Random)' : ''}`}
-      </button>
-    </div>
-  );
-}
-
-export default function Home() {
-  const { data: session, status } = useSession();
-  const router = useRouter();
-  const [boxes, setBoxes] = useState<{ [key: number]: { prize: string; value: number; opened: boolean; glow: string } }>({});
-  const [searchTerm, setSearchTerm] = useState("");
-  const [revealedPrize, setRevealedPrize] = useState<{ prize: string; value: number; glow: string } | null>(null);
-  const [showManualOpener, setShowManualOpener] = useState(false);
-  const modalRef = useRef(null);
+  }, [showManualOpener]);
 
   // 🔐 Check authentication and authorization
   useEffect(() => {
@@ -515,7 +251,62 @@ export default function Home() {
     }
   };
 
+  const handleManualPrizeOpening = async (boxNum: number) => {
+    const finalUserEmail = userSelectionMode === 'manual' ? manualUserEmail : pendingUsers.find(u => u.paymentId === selectedUser)?.email;
+    const finalPaymentId = userSelectionMode === 'pending' ? selectedUser : undefined;
+
+    if (!finalUserEmail && !finalPaymentId) {
+      alert("Please select a user or enter an email.");
+      return;
+    }
+
+    const prize = boxes[boxNum];
+    if (!prize) {
+      alert("Invalid box number.");
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/admin/manual-open-prize', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userEmail: finalUserEmail,
+          prizeName: prize.prize,
+          boxNumber: boxNum,
+          paymentId: finalPaymentId,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        alert(`Prize "${prize.prize}" opened for ${finalUserEmail || 'selected user'}!`);
+        const newBoxes = { ...boxes };
+        newBoxes[boxNum].opened = true;
+        setBoxes(newBoxes);
+        saveBoxesToStorage(newBoxes);
+        handleManualPrizeOpened(prize.prize, finalUserEmail || 'selected user');
+        // After successful opening, refresh pending users list
+        fetchPendingUsers();
+        setSelectedUser(""); // Clear selected user
+        setManualUserEmail(""); // Clear manual email
+      } else {
+        alert(data.error || 'Failed to open prize.');
+      }
+    } catch (error) {
+      alert('An error occurred while opening the prize.');
+    }
+  };
+
   const revealBox = (boxNum: number) => {
+    if (showManualOpener && (selectedUser || manualUserEmail)) {
+      handleManualPrizeOpening(boxNum);
+      return;
+    }
+
     if (boxes[boxNum].opened) return; // prevent duplicate pick
 
     const box = boxes[boxNum];
@@ -558,6 +349,21 @@ export default function Home() {
   };
 
   const pickRandomBox = () => {
+    if (showManualOpener && (selectedUser || manualUserEmail)) {
+      const availableUnopenedBoxes = Object.keys(boxes).filter((boxNum) => {
+        const box = boxes[parseInt(boxNum)];
+        return !box.opened && isBoxAvailable(box);
+      });
+      if (availableUnopenedBoxes.length === 0) {
+        alert("No available boxes to open.");
+        return;
+      }
+      const randomIndex = Math.floor(Math.random() * availableUnopenedBoxes.length);
+      const randomBoxNum = parseInt(availableUnopenedBoxes[randomIndex]);
+      handleManualPrizeOpening(randomBoxNum);
+      return;
+    }
+
     const openedCount = Object.values(boxes).filter(b => b.opened).length;
     
     // Filter boxes that are both unopened AND available based on unlock thresholds
@@ -624,9 +430,13 @@ export default function Home() {
     setSearchTerm(e.target.value);
     const boxNum = parseInt(e.target.value);
     if (boxNum > 0 && boxNum <= 1000) {
-      const boxElement = document.querySelector(`[data-box-num='${boxNum}']`);
-      if (boxElement) {
-        boxElement.scrollIntoView({ behavior: "smooth", block: "center" });
+      if (showManualOpener && (selectedUser || manualUserEmail)) {
+        handleManualPrizeOpening(boxNum);
+      } else {
+        const boxElement = document.querySelector(`[data-box-num='${boxNum}']`);
+        if (boxElement) {
+          boxElement.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
       }
     }
   };
@@ -791,7 +601,94 @@ export default function Home() {
 
         {/* Manual Prize Opener Section */}
         {showManualOpener && (
-          <ManualPrizeOpener onPrizeOpened={handleManualPrizeOpened} />
+          <div style={{
+            background: "rgba(255, 255, 255, 0.1)",
+            padding: "20px",
+            borderRadius: "10px",
+            marginBottom: "20px",
+            border: "1px solid rgba(255, 255, 255, 0.2)"
+          }}>
+            <h3 style={{ color: "#fff", marginBottom: "15px", fontSize: "18px" }}>
+              🎁 Manual Prize Opening (Admin Only)
+            </h3>
+            {/* User Selection */}
+            <div style={{ marginBottom: "15px" }}>
+              <label style={{ color: "#fff", display: "block", marginBottom: "5px", fontWeight: "bold" }}>
+                👤 Select User Method:
+              </label>
+              <div style={{ display: "flex", gap: "10px", marginBottom: "10px" }}>
+                <label style={{ display: "flex", alignItems: "center", color: "#fff", cursor: "pointer" }}>
+                  <input
+                    type="radio"
+                    name="userSelectionMode"
+                    value="pending"
+                    checked={userSelectionMode === 'pending'}
+                    onChange={(e) => setUserSelectionMode(e.target.value as 'pending')}
+                    style={{ marginRight: "5px" }}
+                  />
+                  Select from pending
+                </label>
+                <label style={{ display: "flex", alignItems: "center", color: "#fff", cursor: "pointer" }}>
+                  <input
+                    type="radio"
+                    name="userSelectionMode"
+                    value="manual"
+                    checked={userSelectionMode === 'manual'}
+                    onChange={(e) => setUserSelectionMode(e.target.value as 'manual')}
+                    style={{ marginRight: "5px" }}
+                  />
+                  Enter manually
+                </label>
+              </div>
+
+              {userSelectionMode === 'pending' ? (
+                <select
+                  value={selectedUser}
+                  onChange={(e) => setSelectedUser(e.target.value)}
+                  style={{
+                    padding: "8px 12px",
+                    borderRadius: "5px",
+                    border: "1px solid #ccc",
+                    width: "100%",
+                    backgroundColor: "#000"
+                  }}
+                >
+                  <option value="">Select a user...</option>
+                  {loadingUsers ? (
+                    <option value="" disabled>Loading pending users...</option>
+                  ) : pendingUsers.length > 0 ? (
+                    pendingUsers.map((user) => (
+                      <option key={user.id} value={user.paymentId}>
+                        {user.name || user.email} - ${(user.paymentAmount / 100).toFixed(2)} paid
+                      </option>
+                    ))
+                  ) : (
+                    <option value="" disabled>No pending users found</option>
+                  )}
+                </select>
+              ) : (
+                <input
+                  type="email"
+                  placeholder="Enter user email..."
+                  value={manualUserEmail}
+                  onChange={(e) => setManualUserEmail(e.target.value)}
+                  style={{
+                    padding: "8px 12px",
+                    borderRadius: "5px",
+                    border: "1px solid #ccc",
+                    width: "100%",
+                    backgroundColor: "#000"
+                  }}
+                />
+              )}
+
+              {userSelectionMode === 'pending' && pendingUsers.length > 0 && (
+                <div style={{ marginTop: "5px", fontSize: "12px", color: "#ccc" }}>
+                  Found {pendingUsers.length} user(s) with pending payments
+                </div>
+              )}
+            </div>
+          </div>
         )}
       </header>
 

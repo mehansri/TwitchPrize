@@ -53,32 +53,6 @@ export async function POST(req: NextRequest) {
             user: true,
           },
         });
-
-        // Create a prize claim for this payment
-        await prisma.prizeClaim.create({
-          data: {
-            userId: session.metadata.userId,
-            paymentId: payment.id,
-            status: 'PENDING_ADMIN_OPEN',
-          },
-        });
-
-        // Create notification
-        await prisma.adminNotification.create({
-          data: {
-            type: 'NEW_PAYMENT',
-            title: 'New Payment Received',
-            message: `New payment received from ${payment.user.name || payment.user.email}`,
-            userId: payment.userId,
-          },
-        });
-
-        // Send Discord notification
-        await discordNotifier.notifyNewPayment(
-          payment.user.name || 'Unknown',
-          payment.user.email || 'No email',
-          payment.amount
-        );
       }
     }
 

@@ -32,7 +32,6 @@ export default function AdminDashboard() {
   const [prizeClaims, setPrizeClaims] = useState<PrizeClaim[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedClaim, setSelectedClaim] = useState<PrizeClaim | null>(null);
-  const [openingPrize, setOpeningPrize] = useState(false);
   const [filter, setFilter] = useState<'all' | 'pending' | 'opened' | 'delivered'>('all');
 
   useEffect(() => {
@@ -75,33 +74,7 @@ export default function AdminDashboard() {
     }
   };
 
-  const openPrize = async (claimId: string) => {
-    setOpeningPrize(true);
-    try {
-      const response = await fetch(`/api/admin/open-prize`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ claimId }),
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setSelectedClaim(data.prizeClaim);
-        await fetchPrizeClaims(); // Refresh the list
-        alert(`Prize opened! User won: ${data.prizeClaim.prizeType?.name || 'Random Prize'}`);
-      } else {
-        const error = await response.json();
-        alert(`Error opening prize: ${error.message}`);
-      }
-    } catch (error) {
-      console.error('Error opening prize:', error);
-      alert('Error opening prize');
-    } finally {
-      setOpeningPrize(false);
-    }
-  };
+  
 
   const markAsDelivered = async (claimId: string) => {
     try {
@@ -306,15 +279,7 @@ export default function AdminDashboard() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                         <div className="flex gap-2">
-                          {claim.status === 'PENDING_ADMIN_OPEN' && (
-                            <button
-                              onClick={() => openPrize(claim.id)}
-                              disabled={openingPrize}
-                              className="bg-green-600 hover:bg-green-700 disabled:bg-gray-600 text-white px-3 py-1 rounded text-xs transition-colors"
-                            >
-                              {openingPrize ? 'Opening...' : 'Open Prize'}
-                            </button>
-                          )}
+                          
                           {claim.status === 'OPENED' && (
                             <button
                               onClick={() => markAsDelivered(claim.id)}

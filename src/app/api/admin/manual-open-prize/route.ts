@@ -19,31 +19,44 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 
-    const { userEmail, prizeName, boxNumber } = await request.json();
+    const { userEmail, prizeName, boxNumber, paymentId } = await request.json();
 
-    if (!userEmail) {
-      return NextResponse.json({ error: 'User email is required' }, { status: 400 });
+    if (!userEmail && !paymentId) {
+      return NextResponse.json({ error: 'User email or payment ID is required' }, { status: 400 });
     }
 
-    // Find the user by email
-    const user = await prisma.user.findUnique({
-      where: { email: userEmail },
-    });
+    let user;
+    if (userEmail) {
+      user = await prisma.user.findUnique({
+        where: { email: userEmail },
+      });
+    } else if (paymentId) {
+      const payment = await prisma.payment.findUnique({
+        where: { id: paymentId },
+        include: { user: true },
+      });
+      if (payment) {
+        user = payment.user;
+      }
+    }
 
     if (!user) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
-    // Determine the final prize name
-    let finalPrizeName = prizeName;
-    
-    if (boxNumber) {
-      // If box number is provided, get prize from box number
-      finalPrizeName = getPrizeFromBoxNumber(parseInt(boxNumber));
-    } else if (!prizeName) {
-      // If no prize name and no box number, pick random
-      finalPrizeName = getRandomPrize();
+    // Check if the user already has an opened prize that has not been delivered
+    const existingClaim = await prisma.prizeClaim.findFirst({
+        where: {
+            userId: user.id,
+            status: 'OPENED',
+        },
+    });
+
+    if (existingClaim) {
+        return NextResponse.json({ error: 'User already has an opened prize that has not been delivered.' }, { status: 400 });
     }
+
+    const finalPrizeName = prizeName;
 
     // Find or create the prize type
     let prizeType = await prisma.prizeType.findUnique({
@@ -58,7 +71,7 @@ export async function POST(request: NextRequest) {
       prizeType = await prisma.prizeType.create({
         data: {
           name: finalPrizeName,
-          description: `Manual prize: ${finalPrizeName}${boxNumber ? ` (Box ${boxNumber})` : ''}`,
+          description: `Manual prize: ${finalPrizeName}`,
           value: prizeValue,
           glow: prizeGlow,
           isActive: true,
@@ -72,14 +85,27 @@ export async function POST(request: NextRequest) {
         userId: user.id,
         status: 'OPENED', // Directly mark as opened since it's manual
         openedAt: new Date(),
-        notes: `Manually opened by admin ${session.user.email}${boxNumber ? ` (Box ${boxNumber})` : ''}`,
+        notes: `Manually opened by admin ${session.user.email} from box #${boxNumber}`,
         prizeTypeId: prizeType.id,
+        paymentId: paymentId || null, // Link to payment if provided
       },
       include: {
         user: true,
         prizeType: true,
       },
     });
+
+    // Explicitly connect the prizeClaim to the Payment if paymentId is provided
+    if (paymentId) {
+      await prisma.payment.update({
+        where: { id: paymentId },
+        data: {
+          prizeClaim: {
+            connect: { id: prizeClaim.id },
+          },
+        },
+      });
+    }
 
     // Create admin notification
     await prisma.adminNotification.create({
@@ -161,68 +187,4 @@ function getPrizeGlow(prizeName: string): string {
   return prize ? prize.glow : "green";
 }
 
-// Helper function to get prize from box number (matches the box generation logic)
-function getPrizeFromBoxNumber(boxNum: number): string {
-  // This should match the exact same logic as your box generation
-  // For now, using a deterministic approach based on box number
-  const prizePool = [
-    { name: "Unified Minds Booster Box", count: 1, value: 120, glow: "gold" },
-    { name: "151 UPC", count: 1, value: 100, glow: "gold" },
-    { name: "151 ETB", count: 1, value: 50, glow: "gold" },
-    { name: "Random Pack", count: 120, value: 5, glow: "blue" },
-    { name: "Random Single (Low-tier)", count: 420, value: 2, glow: "green" },
-    { name: "Random Single (Mid-tier)", count: 20, value: 15, glow: "blue" },
-    { name: "Random Single (High-tier)", count: 12, value: 35, glow: "purple" },
-    { name: "Spin Punishment Wheel", count: 60, value: 0, glow: "green" },
-    { name: "Vintage Card Bundle", count: 20, value: 40, glow: "blue" },
-    { name: "Magic Booster Pack", count: 20, value: 5, glow: "blue" },
-    { name: "Next Box 50% Off", count: 40, value: 0, glow: "blue" },
-    { name: "Womp Womp", count: 170, value: 0, glow: "green" },
-    { name: "Gem Depo (Boxed)", count: 50, value: 25, glow: "green" },
-    { name: "Random Slab", count: 25, value: 30, glow: "purple" },
-    { name: "Random Pokémon Merch (Pick)", count: 20, value: 20, glow: "purple" },
-    { name: "Custom Pokémon Art", count: 20, value: 15, glow: "purple" },
-  ];
 
-  // Generate the same box mapping as in the frontend
-  const allPrizes: string[] = [];
-  prizePool.forEach((item) => {
-    for (let i = 0; i < item.count; i++) {
-      allPrizes.push(item.name);
-    }
-  });
-
-  // Use a deterministic seed based on box number
-  const seed = boxNum - 1; // Convert to 0-based index
-  if (seed >= 0 && seed < allPrizes.length) {
-    return allPrizes[seed];
-  }
-
-  // Fallback to random if box number is out of range
-  return getRandomPrize();
-}
-
-// Helper function to get a random prize
-function getRandomPrize(): string {
-  const prizePool = [
-    "Unified Minds Booster Box",
-    "151 UPC", 
-    "151 ETB",
-    "Random Pack",
-    "Random Single (Low-tier)",
-    "Random Single (Mid-tier)",
-    "Random Single (High-tier)",
-    "Spin Punishment Wheel",
-    "Vintage Card Bundle",
-    "Magic Booster Pack",
-    "Next Box 50% Off",
-    "Womp Womp",
-    "Gem Depo (Boxed)",
-    "Random Slab",
-    "Random Pokémon Merch (Pick)",
-    "Custom Pokémon Art",
-  ];
-
-  const randomIndex = Math.floor(Math.random() * prizePool.length);
-  return prizePool[randomIndex];
-}
