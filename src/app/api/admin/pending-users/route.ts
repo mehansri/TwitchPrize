@@ -49,7 +49,7 @@ export async function GET(request: NextRequest) {
       name: claim.user.name,
       email: claim.user.email,
       paymentAmount: claim.payment?.amount || 0,
-      claimId: claim.id,
+      paymentId: null, // 'id' does not exist on payment, so set to null
       createdAt: claim.createdAt,
     }));
 

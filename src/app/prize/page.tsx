@@ -266,18 +266,24 @@ export default function Home() {
       return;
     }
 
+    const requestBody: any = {
+      prizeName: prize.prize,
+      boxNumber: boxNum,
+    };
+
+    if (userSelectionMode === 'manual') {
+      requestBody.userEmail = finalUserEmail;
+    } else if (userSelectionMode === 'pending') {
+      requestBody.paymentId = finalPaymentId;
+    }
+
     try {
       const response = await fetch('/api/admin/manual-open-prize', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          userEmail: finalUserEmail,
-          prizeName: prize.prize,
-          boxNumber: boxNum,
-          paymentId: finalPaymentId,
-        }),
+        body: JSON.stringify(requestBody),
       });
 
       const data = await response.json();
