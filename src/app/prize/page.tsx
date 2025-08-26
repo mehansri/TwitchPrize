@@ -417,12 +417,12 @@ export default function Home() {
           onChange={handleSearchChange}
         />
         <nav>
-          <a href="/register" style={{ marginLeft: "10px", color: "#007bff" }}>
+          <Link href="/register" style={{ marginLeft: "10px", color: "#007bff" }}>
             Register
-          </a>
-          <a href="/" style={{ marginLeft: "10px", color: "#007bff" }}>
+          </Link>
+          <Link href="/" style={{ marginLeft: "10px", color: "#007bff" }}>
             Login
-          </a>
+          </Link>
         </nav>
         <div style={{ marginTop: "15px", display: "flex", gap: "10px", justifyContent: "center" }}>
           <button
