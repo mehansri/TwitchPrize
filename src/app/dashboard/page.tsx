@@ -19,7 +19,7 @@ declare global {
           layout?: string;
           theme?: string;
         }
-      ) => any;
+      ) => unknown;
     };
   }
 }

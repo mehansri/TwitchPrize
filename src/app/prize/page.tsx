@@ -5,6 +5,7 @@ import { gsap } from "gsap";
 import { useSession, signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { isUserAuthorized } from "@/lib/config";
+import Link from "next/link";
 
 // 🎁 Define your prize pool with counts (odds still apply)
 const prizePool = [
@@ -384,9 +385,9 @@ export default function Home() {
         <h1>🎁 Oogli&apos;s Mystery Box 🎁</h1>
         <p>
           Watch live on{" "}
-          <a href="https://twitch.tv/oogli" target="_blank" rel="noreferrer">
+          <Link href="https://twitch.tv/oogli" target="_blank" rel="noreferrer">
             twitch.tv/oogli
-          </a>
+          </Link>
         </p>
         <div style={{ marginBottom: "10px" }}>
           <span style={{ color: "#666", fontSize: "14px" }}>
