@@ -262,7 +262,7 @@ export default function AdminDashboard() {
                           {claim.prizeType ? (
                             <div>
                               <div className="font-medium text-white">{claim.prizeType.name}</div>
-                              <div className="text-xs">${(claim.prizeType.value / 100).toFixed(2)}</div>
+                              {/*<div className="text-xs">${(claim.prizeType.value / 100).toFixed(2)}</div>*/}
                             </div>
                           ) : (
                             <span className="text-gray-500">Not opened yet</span>

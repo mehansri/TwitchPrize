@@ -294,6 +294,8 @@ export default function Home() {
       const data = await response.json();
 
       if (response.ok) {
+
+
         alert(`Prize "${prize.prize}" opened for ${finalUserEmail || 'selected user'}!`);
         const newBoxes = { ...boxes };
         newBoxes[boxNum].opened = true;
@@ -308,8 +310,10 @@ export default function Home() {
         alert(data.error || 'Failed to open prize.');
       }
     } catch (error) {
-      alert('An error occurred while opening the prize.');
+      console.error("Error opening prize:", error);
+      alert(`An error occurred while opening the prize: ${error instanceof Error ? error.message : String(error)}`);
     }
+    
   };
 
   const revealBox = (boxNum: number) => {
@@ -669,7 +673,7 @@ export default function Home() {
                     <option value="" disabled>Loading pending users...</option>
                   ) : pendingUsers.length > 0 ? (
                     pendingUsers.map((user) => (
-                      <option key={user.id} value={user.paymentId}>
+                      <option key={user.paymentId} value={user.paymentId}>
                         {user.name || user.email} - ${(user.paymentAmount / 100).toFixed(2)} paid
                       </option>
                     ))

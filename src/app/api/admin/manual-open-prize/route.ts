@@ -40,6 +40,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
+
     if (!user) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
@@ -165,7 +166,6 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('Error manually opening prize:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
