@@ -94,7 +94,7 @@ export async function POST(request: NextRequest) {
     // Send Discord notification
     await discordNotifier.notifyManualPrizeOpened(
       session.user.name || session.user.email || 'Unknown Admin',
-      user.name || user.email,
+       user.name ?? user.email ?? "Unknown User",
       finalPrizeName,
       prizeType.value
     );
