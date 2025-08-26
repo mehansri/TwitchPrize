@@ -2,8 +2,27 @@
 
 import { useSession, signOut } from 'next-auth/react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { loadStripe } from '@stripe/stripe-js';
+
+// TypeScript declarations for Twitch embed
+declare global {
+  interface Window {
+    Twitch?: {
+      Embed: new (
+        element: HTMLElement,
+        options: {
+          width: string | number;
+          height: number;
+          channel?: string;
+          parent: string[];
+          layout?: string;
+          theme?: string;
+        }
+      ) => any;
+    };
+  }
+}
 
 // Make sure to call `loadStripe` outside of a component's render to avoid
 // recreating the `Stripe` object on every render.
@@ -26,6 +45,8 @@ function DashboardContent() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ type: string; text: string } | null>(null);
   const [payments, setPayments] = useState<Payment[]>([]);
+  const twitchEmbedRef = useRef<HTMLDivElement>(null);
+  const [twitchLoaded, setTwitchLoaded] = useState(false);
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -45,6 +66,40 @@ function DashboardContent() {
       router.replace('/dashboard');
     }
   }, [searchParams, router]);
+
+  // Load Twitch embed script
+  useEffect(() => {
+    const loadTwitchEmbed = () => {
+      if (typeof window !== 'undefined' && !window.Twitch) {
+        const script = document.createElement('script');
+        script.src = 'https://embed.twitch.tv/embed/v1.js';
+        script.async = true;
+        script.onload = () => {
+          setTwitchLoaded(true);
+          initializeTwitchEmbed();
+        };
+        document.head.appendChild(script);
+      } else if (window.Twitch) {
+        setTwitchLoaded(true);
+        initializeTwitchEmbed();
+      }
+    };
+
+    const initializeTwitchEmbed = () => {
+      if (window.Twitch && twitchEmbedRef.current) {
+        new window.Twitch.Embed(twitchEmbedRef.current, {
+          width: '100%',
+          height: 480,
+          channel: 'oogli', // Change this to your desired channel
+          parent: [window.location.hostname], // Allow embedding on current domain
+          layout: 'video',
+          theme: 'dark'
+        });
+      }
+    };
+
+    loadTwitchEmbed();
+  }, [twitchLoaded]);
 
   // Fetch payment history
   useEffect(() => {
@@ -152,6 +207,22 @@ function DashboardContent() {
           )}
 
           <div className="space-y-6">
+            {/* Twitch Stream Embed */}
+            <div className="bg-white/5 rounded-lg p-6 border border-white/10">
+              <h2 className="text-xl font-semibold text-white mb-4">🎥 Live Stream</h2>
+              <div 
+                ref={twitchEmbedRef}
+                className="w-full bg-black rounded-lg overflow-hidden"
+                style={{ minHeight: '480px' }}
+              >
+                {!twitchLoaded && (
+                  <div className="flex items-center justify-center h-48 text-gray-400">
+                    Loading stream...
+                  </div>
+                )}
+              </div>
+            </div>
+
             <div className="bg-white/5 rounded-lg p-6 border border-white/10">
               <h2 className="text-xl font-semibold text-white mb-4">Welcome!</h2>
               <p className="text-gray-300">

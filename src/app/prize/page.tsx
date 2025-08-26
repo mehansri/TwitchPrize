@@ -8,31 +8,36 @@ import { isUserAuthorized } from "@/lib/config";
 
 // 🎁 Define your prize pool with counts (odds still apply)
 const prizePool = [
-  { prize: "Unified Minds Booster Box", count: 1, value: 120 },
-  { prize: "151 UPC", count: 1, value: 100 },
-  { prize: "151 ETB", count: 1, value: 50 },
-  { prize: "Random Pack", count: 120, value: 5 },
-  { prize: "Random Single (Low-tier)", count: 500, value: 2 },
-  { prize: "Random Single (Mid-tier)", count: 20, value: 15 },
-  { prize: "Random Single (High-tier)", count: 12, value: 35 },
-  { prize: "Spin Punishment Wheel", count: 110, value: 0 },
-  { prize: "Vintage Card Bundle", count: 20, value: 40 },
-  { prize: "Magic Booster Pack", count: 20, value: 5 },
-  { prize: "Next Box 50% Off", count: 40, value: 0 },
-  { prize: "Womp Womp", count: 160, value: 0 },
-  { prize: "Gem Depo (Boxed)", count: 50, value: 25 },
-  { prize: "Random Slab", count: 25, value: 30 },
-  { prize: "Random Pokémon Merch (Pick)", count: 20, value: 20 },
-  { prize: "Custom Pokémon Art", count: 20, value: 15 },
+  { prize: "Unified Minds Booster Box", count: 1, value: 120, glow: "gold" },
+  { prize: "151 UPC", count: 1, value: 100, glow: "gold" },
+  { prize: "151 ETB", count: 1, value: 50, glow: "gold" },
+  { prize: "Random Pack", count: 120, value: 5, glow: "blue" },
+  { prize: "Random Single (Low-tier)", count: 500, value: 2, glow: "red" },
+  { prize: "Random Single (Mid-tier)", count: 20, value: 15, glow: "blue" },
+  { prize: "Random Single (High-tier)", count: 12, value: 35, glow: "purple" },
+  { prize: "Spin Punishment Wheel", count: 110, value: 0, glow: "red" },
+  { prize: "Vintage Card Bundle", count: 20, value: 40, glow: "blue" },
+  { prize: "Magic Booster Pack", count: 20, value: 5, glow: "blue" },
+  { prize: "Next Box 50% Off", count: 40, value: 0, glow: "blue" },
+  { prize: "Womp Womp", count: 160, value: 0, glow: "red" },
+  { prize: "Gem Depo (Boxed)", count: 50, value: 25, glow: "red" },
+  { prize: "Random Slab", count: 25, value: 30, glow: "purple" },
+  { prize: "Random Pokémon Merch (Pick)", count: 20, value: 20, glow: "purple" },
+  { prize: "Custom Pokémon Art", count: 20, value: 15, glow: "purple" },
 ];
 
 // 🔀 Generate 1000 shuffled boxes
 function generateBoxes() {
-  const allPrizes: { prize: string; value: number; opened: boolean }[] = [];
+  const allPrizes: { prize: string; value: number; opened: boolean; glow: string }[] = [];
 
   prizePool.forEach((item) => {
     for (let i = 0; i < item.count; i++) {
-      allPrizes.push({ prize: item.prize, value: item.value, opened: false });
+      allPrizes.push({ 
+        prize: item.prize, 
+        value: item.value, 
+        opened: false, 
+        glow: item.glow 
+      });
     }
   });
 
@@ -43,7 +48,7 @@ function generateBoxes() {
   }
 
   // Map into object {1..1000}
-  const boxMap: { [key: number]: { prize: string; value: number; opened: boolean } } = {};
+  const boxMap: { [key: number]: { prize: string; value: number; opened: boolean; glow: string } } = {};
   allPrizes.forEach((prize, idx) => {
     boxMap[idx + 1] = prize;
   });
@@ -68,17 +73,33 @@ function loadBoxesFromStorage() {
 }
 
 // 💾 Save boxes to localStorage
-function saveBoxesToStorage(boxes: { [key: number]: { prize: string; value: number; opened: boolean } }) {
+function saveBoxesToStorage(boxes: { [key: number]: { prize: string; value: number; opened: boolean; glow: string } }) {
   if (typeof window === "undefined") return;
   localStorage.setItem('mysteryBoxes', JSON.stringify(boxes));
+}
+
+// 🌟 Get glow color for a prize
+function getGlowColor(glow: string): string {
+  switch (glow) {
+    case "gold":
+      return "#FFD700";
+    case "blue":
+      return "#007bff";
+    case "red":
+      return "#dc3545";
+    case "purple":
+      return "#6f42c1";
+    default:
+      return "#9146FF";
+  }
 }
 
 export default function Home() {
   const { data: session, status } = useSession();
   const router = useRouter();
-  const [boxes, setBoxes] = useState<{ [key: number]: { prize: string; value: number; opened: boolean } }>({});
+  const [boxes, setBoxes] = useState<{ [key: number]: { prize: string; value: number; opened: boolean; glow: string } }>({});
   const [searchTerm, setSearchTerm] = useState("");
-  const [revealedPrize, setRevealedPrize] = useState<{ prize: string; value: number } | null>(null);
+  const [revealedPrize, setRevealedPrize] = useState<{ prize: string; value: number; glow: string } | null>(null);
   const modalRef = useRef(null);
 
   // 🔐 Check authentication and authorization
@@ -116,10 +137,97 @@ export default function Home() {
     }
   }, [session, status]);
 
+  // 🔓 Check if a box should be available based on unlock thresholds
+  const isBoxAvailable = (box: { prize: string; value: number; opened: boolean; glow: string }) => {
+    const openedCount = Object.values(boxes).filter(b => b.opened).length;
+    
+    // Gold boxes (premium prizes) unlock after 800+ boxes opened
+    if (box.glow === "gold" && openedCount < 800) {
+      return false;
+    }
+    
+    // Purple boxes (high-tier prizes) unlock after 600+ boxes opened
+    if (box.glow === "purple" && openedCount < 600) {
+      return false;
+    }
+    
+    return true;
+  };
+
+  // 🔀 Reshuffle boxes when tiers unlock to prevent number memorization
+  const reshuffleBoxesOnUnlock = () => {
+    const openedCount = Object.values(boxes).filter(b => b.opened).length;
+    
+    // Check if we just crossed unlock thresholds
+    const justUnlockedPurple = openedCount === 600;
+    const justUnlockedGold = openedCount === 800;
+    
+    if (justUnlockedPurple || justUnlockedGold) {
+      // Add a visual effect to show reshuffling is happening
+      const boxGrid = document.getElementById('boxGrid');
+      if (boxGrid) {
+        gsap.to(boxGrid, {
+          duration: 0.3,
+          opacity: 0.5,
+          scale: 0.98,
+          onComplete: () => {
+            // Get all unopened boxes
+            const unopenedBoxes = Object.entries(boxes)
+              .filter(([_, box]) => !box.opened)
+              .map(([num, box]) => ({ num: parseInt(num), box }));
+            
+            // Shuffle the unopened boxes
+            for (let i = unopenedBoxes.length - 1; i > 0; i--) {
+              const j = Math.floor(Math.random() * (i + 1));
+              [unopenedBoxes[i], unopenedBoxes[j]] = [unopenedBoxes[j], unopenedBoxes[i]];
+            }
+            
+            // Create new box mapping with shuffled positions
+            const newBoxes = { ...boxes };
+            unopenedBoxes.forEach(({ num, box }, index) => {
+              const newNum = Object.keys(boxes).filter(key => !boxes[parseInt(key)].opened)[index];
+              if (newNum) {
+                newBoxes[parseInt(newNum)] = box;
+              }
+            });
+            
+            setBoxes(newBoxes);
+            saveBoxesToStorage(newBoxes);
+            
+            // Restore visual effect
+            gsap.to(boxGrid, {
+              duration: 0.3,
+              opacity: 1,
+              scale: 1,
+              onComplete: () => {
+                // Show unlock notification
+                const tierName = justUnlockedPurple ? "Purple" : "Gold";
+                alert(`🎉 ${tierName} tier unlocked! Boxes have been reshuffled for fairness!`);
+              }
+            });
+          }
+        });
+      }
+    }
+  };
+
   const revealBox = (boxNum: number) => {
     if (boxes[boxNum].opened) return; // prevent duplicate pick
 
-    const prizeData = boxes[boxNum];
+    const box = boxes[boxNum];
+    
+    // Check if box is available for opening
+    if (!isBoxAvailable(box)) {
+      const openedCount = Object.values(boxes).filter(b => b.opened).length;
+      const requiredCount = box.glow === "gold" ? 800 : 600;
+      
+      // Instead of revealing the box content, show a generic message
+      // This prevents users from learning which boxes contain premium prizes
+      alert(`This box is temporarily unavailable. Continue opening boxes to unlock new tiers!`);
+      return;
+    }
+
+    const prizeData = box;
     setRevealedPrize(prizeData);
 
     const boxElement = document.querySelector(`[data-box-num='${boxNum}']`);
@@ -133,6 +241,12 @@ export default function Home() {
           newBoxes[boxNum].opened = true;
           setBoxes(newBoxes);
           saveBoxesToStorage(newBoxes); // Save to localStorage
+          
+          // Check if we need to reshuffle after this box opening
+          setTimeout(() => {
+            reshuffleBoxesOnUnlock();
+          }, 1000); // Small delay to let the modal show first
+          
           gsap.to(modalRef.current, { duration: 0.5, autoAlpha: 1 });
         },
       });
@@ -140,22 +254,41 @@ export default function Home() {
   };
 
   const pickRandomBox = () => {
-    const unopenedBoxes = Object.keys(boxes).filter((boxNum) => !boxes[parseInt(boxNum)].opened);
-    if (unopenedBoxes.length === 0) {
-      alert("All boxes have been opened!");
+    const openedCount = Object.values(boxes).filter(b => b.opened).length;
+    
+    // Filter boxes that are both unopened AND available based on unlock thresholds
+    const availableUnopenedBoxes = Object.keys(boxes).filter((boxNum) => {
+      const box = boxes[parseInt(boxNum)];
+      return !box.opened && isBoxAvailable(box);
+    });
+    
+    if (availableUnopenedBoxes.length === 0) {
+      // Check if there are any unopened boxes that are just locked
+      const lockedUnopenedBoxes = Object.keys(boxes).filter((boxNum) => {
+        const box = boxes[parseInt(boxNum)];
+        return !box.opened && !isBoxAvailable(box);
+      });
+      
+      if (lockedUnopenedBoxes.length > 0) {
+        const nextUnlock = openedCount < 600 ? 600 : 800;
+        alert(`All available boxes have been opened! You need to open ${nextUnlock - openedCount} more boxes to unlock the next tier.`);
+      } else {
+        alert("All boxes have been opened!");
+      }
       return;
     }
 
-    const randomIndex = Math.floor(Math.random() * unopenedBoxes.length);
-    const randomBoxNum = parseInt(unopenedBoxes[randomIndex]);
+    const randomIndex = Math.floor(Math.random() * availableUnopenedBoxes.length);
+    const randomBoxNum = parseInt(availableUnopenedBoxes[randomIndex]);
 
     const boxElement = document.querySelector(`[data-box-num='${randomBoxNum}']`);
     if (boxElement) {
+      const glowColor = getGlowColor(boxes[randomBoxNum].glow);
       boxElement.scrollIntoView({ behavior: "smooth", block: "center" });
       gsap.to(boxElement, {
         duration: 0.3,
         scale: 1.3,
-        boxShadow: "0 0 20px #9146FF",
+        boxShadow: `0 0 20px ${glowColor}`,
         repeat: 2,
         yoyo: true,
         onComplete: () => {
@@ -259,6 +392,21 @@ export default function Home() {
           <span style={{ color: "#666", fontSize: "14px" }}>
             Opened: {openedCount}/{totalBoxes} boxes
           </span>
+          {openedCount < 600 && (
+            <div style={{ marginTop: "5px", fontSize: "12px", color: "#6f42c1" }}>
+              🔒 Purple tier unlocks in {600 - openedCount} more boxes
+            </div>
+          )}
+          {openedCount >= 600 && openedCount < 800 && (
+            <div style={{ marginTop: "5px", fontSize: "12px", color: "#FFD700" }}>
+              🔒 Gold tier unlocks in {800 - openedCount} more boxes
+            </div>
+          )}
+          {openedCount >= 800 && (
+            <div style={{ marginTop: "5px", fontSize: "12px", color: "#28a745" }}>
+              ✨ All tiers unlocked!
+            </div>
+          )}
         </div>
         <input
           type="text"
@@ -271,7 +419,7 @@ export default function Home() {
           <a href="/register" style={{ marginLeft: "10px", color: "#007bff" }}>
             Register
           </a>
-          <a href="/login" style={{ marginLeft: "10px", color: "#007bff" }}>
+          <a href="/" style={{ marginLeft: "10px", color: "#007bff" }}>
             Login
           </a>
         </nav>
@@ -320,6 +468,10 @@ export default function Home() {
           const boxNum = parseInt(boxNumStr);
           const box = boxes[boxNum];
           const shouldHighlight = !searchTerm || boxNumStr === searchTerm;
+          const glowColor = getGlowColor(box.glow);
+          const isAvailable = isBoxAvailable(box);
+          const isLocked = !box.opened && !isAvailable;
+          
           return (
             <div
               key={boxNum}
@@ -327,8 +479,17 @@ export default function Home() {
               data-box-num={boxNum}
               onClick={() => revealBox(boxNum)}
               style={{
-                outline: shouldHighlight ? "2px solid #9146FF" : "none",
-                boxShadow: shouldHighlight ? "0 0 10px #9146FF" : "none",
+                outline: shouldHighlight ? `2px solid #9146FF` : "none",
+                boxShadow: shouldHighlight 
+                  ? `0 0 10px #9146FF` 
+                  : box.opened 
+                    ? `0 0 15px ${glowColor}` 
+                    : "none",
+                border: box.opened 
+                  ? `2px solid ${glowColor}` 
+                  : "1px solid #ccc",
+                cursor: "pointer",
+                position: "relative",
               }}
             >
               {box.opened ? "🎉" : boxNum}
@@ -346,7 +507,17 @@ export default function Home() {
             </span>
             <h2>Congratulations!</h2>
             <p>You&apos;ve won:</p>
-            <p className="prize-name">{revealedPrize.prize}</p>
+            <p 
+              className="prize-name" 
+              style={{
+                color: getGlowColor(revealedPrize.glow),
+                textShadow: `0 0 10px ${getGlowColor(revealedPrize.glow)}`,
+                fontWeight: "bold",
+                fontSize: "1.2em"
+              }}
+            >
+              {revealedPrize.prize}
+            </p>
           </div>
         )}
       </div>
