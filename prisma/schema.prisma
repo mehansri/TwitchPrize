@@ -54,6 +54,8 @@ model User {
   accounts      Account[]
   sessions      Session[]
   payments      Payment[]
+  prizeClaims   PrizeClaim[]
+  adminNotifications AdminNotification[]
 }
 
 model VerificationToken {
@@ -75,4 +77,66 @@ model Payment {
   updatedAt           DateTime @updatedAt
 
   user User @relation(fields: [userId], references: [id])
+  prizeClaim PrizeClaim? // One payment can have one prize claim
+}
+
+model PrizeType {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?
+  value       Int      // Value in cents
+  glow        String   // gold, blue, green, purple
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  prizeClaims PrizeClaim[]
+}
+
+model PrizeClaim {
+  id          String   @id @default(cuid())
+  userId      String
+  paymentId   String   @unique // One-to-one with payment
+  prizeTypeId String?
+  status      PrizeStatus @default(PENDING_ADMIN_OPEN)
+  openedBy    String?  // Admin user ID who opened the prize
+  openedAt    DateTime?
+  notes       String?  // Admin notes about the prize
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user      User      @relation(fields: [userId], references: [id])
+  payment   Payment   @relation(fields: [paymentId], references: [id])
+  prizeType PrizeType? @relation(fields: [prizeTypeId], references: [id])
+  adminNotifications AdminNotification[]
+}
+
+model AdminNotification {
+  id          String   @id @default(cuid())
+  type        NotificationType
+  title       String
+  message     String
+  userId      String?  // Related user if applicable
+  prizeClaimId String? // Related prize claim if applicable
+  isRead      Boolean  @default(false)
+  readAt      DateTime?
+  createdAt   DateTime @default(now())
+
+  user      User?      @relation(fields: [userId], references: [id])
+  prizeClaim PrizeClaim? @relation(fields: [prizeClaimId], references: [id])
+}
+
+enum PrizeStatus {
+  PENDING_ADMIN_OPEN  // User paid, waiting for admin to open prize
+  OPENED              // Admin opened the prize
+  DELIVERED           // Prize has been delivered to user
+  CANCELLED           // Prize claim was cancelled
+}
+
+enum NotificationType {
+  NEW_PAYMENT         // New payment received
+  PRIZE_OPENED        // Prize was opened by admin
+  PRIZE_DELIVERED     // Prize was delivered
+  PAYMENT_FAILED      // Payment failed
+  SYSTEM_ALERT        // System alert
 }

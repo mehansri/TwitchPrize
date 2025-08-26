@@ -4,6 +4,7 @@ import { useSession, signOut } from 'next-auth/react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useState, useRef } from 'react';
 import { loadStripe } from '@stripe/stripe-js';
+import { isUserAuthorized } from '@/lib/config';
 
 // TypeScript declarations for Twitch embed
 declare global {
@@ -47,6 +48,7 @@ function DashboardContent() {
   const [payments, setPayments] = useState<Payment[]>([]);
   const twitchEmbedRef = useRef<HTMLDivElement>(null);
   const [twitchLoaded, setTwitchLoaded] = useState(false);
+  const twitchEmbedInstance = useRef<any>(null);
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -86,8 +88,9 @@ function DashboardContent() {
     };
 
     const initializeTwitchEmbed = () => {
-      if (window.Twitch && twitchEmbedRef.current) {
-        new window.Twitch.Embed(twitchEmbedRef.current, {
+      if (window.Twitch && twitchEmbedRef.current && !twitchEmbedInstance.current) {
+        // Only create embed if one doesn't already exist
+        twitchEmbedInstance.current = new window.Twitch.Embed(twitchEmbedRef.current, {
           width: '100%',
           height: 480,
           channel: 'oogli', // Change this to your desired channel
@@ -99,7 +102,7 @@ function DashboardContent() {
     };
 
     loadTwitchEmbed();
-  }, [twitchLoaded]);
+  }, []); // Remove twitchLoaded dependency to prevent multiple initializations
 
   // Fetch payment history
   useEffect(() => {
@@ -189,12 +192,22 @@ function DashboardContent() {
         <div className="bg-white/10 backdrop-blur-sm rounded-xl p-8 border border-white/20">
           <div className="flex justify-between items-center mb-8">
             <h1 className="text-3xl font-bold text-white">Dashboard</h1>
-            <button
-              onClick={handleSignOut}
-              className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg transition-colors"
-            >
-              Sign Out
-            </button>
+            <div className="flex gap-2">
+              {isUserAuthorized(session?.user?.email, session?.user?.id) && (
+                <button
+                  onClick={() => router.push('/admin')}
+                  className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg transition-colors"
+                >
+                  Admin Panel
+                </button>
+              )}
+              <button
+                onClick={handleSignOut}
+                className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg transition-colors"
+              >
+                Sign Out
+              </button>
+            </div>
           </div>
           
           {/* Message display */}

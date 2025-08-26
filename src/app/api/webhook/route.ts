@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 import Stripe from 'stripe';
 import { prisma } from '@/lib/prisma';
+import { discordNotifier } from '@/lib/discord';
 // import { buffer } from 'micro';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
@@ -39,16 +40,45 @@ export async function POST(req: NextRequest) {
 
       // 4. Update the database with payment information
       if (session.payment_status === 'paid' && session.metadata?.userId) {
-        // Create or update the payment record
-        await prisma.payment.create({
+        // Create the payment record
+        const payment = await prisma.payment.create({
           data: {
             stripePaymentIntentId: session.payment_intent as string,
             amount: session.amount_total!,
             currency: session.currency!,
             status: session.payment_status,
             userId: session.metadata.userId,
-          }
+          },
+          include: {
+            user: true,
+          },
         });
+
+        // Create a prize claim for this payment
+        await prisma.prizeClaim.create({
+          data: {
+            userId: session.metadata.userId,
+            paymentId: payment.id,
+            status: 'PENDING_ADMIN_OPEN',
+          },
+        });
+
+        // Create notification
+        await prisma.adminNotification.create({
+          data: {
+            type: 'NEW_PAYMENT',
+            title: 'New Payment Received',
+            message: `New payment received from ${payment.user.name || payment.user.email}`,
+            userId: payment.userId,
+          },
+        });
+
+        // Send Discord notification
+        await discordNotifier.notifyNewPayment(
+          payment.user.name || 'Unknown',
+          payment.user.email || 'No email',
+          payment.amount
+        );
       }
     }
 
