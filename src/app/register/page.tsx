@@ -93,7 +93,7 @@ export default function RegisterPage() {
             <div className="space-y-4">
               <div>
                 <label htmlFor="name" className="block text-sm font-medium text-white">
-                  Full Name
+                  Username
                 </label>
                 <input
                   id="name"
@@ -103,7 +103,7 @@ export default function RegisterPage() {
                   value={formData.name}
                   onChange={handleChange}
                   className="mt-1 appearance-none relative block w-full px-3 py-2 border border-white/20 placeholder-gray-400 text-white bg-white/10 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent focus:z-10 sm:text-sm"
-                  placeholder="Enter your full name"
+                  placeholder="Enter your user name"
                 />
               </div>
               
