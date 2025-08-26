@@ -12,15 +12,15 @@ const prizePool = [
   { prize: "151 UPC", count: 1, value: 100, glow: "gold" },
   { prize: "151 ETB", count: 1, value: 50, glow: "gold" },
   { prize: "Random Pack", count: 120, value: 5, glow: "blue" },
-  { prize: "Random Single (Low-tier)", count: 500, value: 2, glow: "red" },
+  { prize: "Random Single (Low-tier)", count: 420, value: 2, glow: "green" },
   { prize: "Random Single (Mid-tier)", count: 20, value: 15, glow: "blue" },
   { prize: "Random Single (High-tier)", count: 12, value: 35, glow: "purple" },
-  { prize: "Spin Punishment Wheel", count: 110, value: 0, glow: "red" },
+  { prize: "Spin Punishment Wheel", count: 60, value: 0, glow: "green" },
   { prize: "Vintage Card Bundle", count: 20, value: 40, glow: "blue" },
   { prize: "Magic Booster Pack", count: 20, value: 5, glow: "blue" },
   { prize: "Next Box 50% Off", count: 40, value: 0, glow: "blue" },
-  { prize: "Womp Womp", count: 160, value: 0, glow: "red" },
-  { prize: "Gem Depo (Boxed)", count: 50, value: 25, glow: "red" },
+  { prize: "Womp Womp", count: 170, value: 0, glow: "green" },
+  { prize: "Gem Depo (Boxed)", count: 50, value: 25, glow: "green" },
   { prize: "Random Slab", count: 25, value: 30, glow: "purple" },
   { prize: "Random Pokémon Merch (Pick)", count: 20, value: 20, glow: "purple" },
   { prize: "Custom Pokémon Art", count: 20, value: 15, glow: "purple" },
@@ -85,8 +85,8 @@ function getGlowColor(glow: string): string {
       return "#FFD700";
     case "blue":
       return "#007bff";
-    case "red":
-      return "#dc3545";
+    case "green":
+      return "#28a745";
     case "purple":
       return "#6f42c1";
     default:
