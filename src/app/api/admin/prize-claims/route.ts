@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
     const filter = searchParams.get('filter') || 'all';
 
     // Build the where clause based on filter
-    let whereClause: any = {};
+    const whereClause: { status?: 'PENDING_ADMIN_OPEN' | 'OPENED' | 'DELIVERED' } = {};
     
     if (filter === 'pending') {
       whereClause.status = 'PENDING_ADMIN_OPEN';

@@ -48,7 +48,7 @@ function DashboardContent() {
   const [payments, setPayments] = useState<Payment[]>([]);
   const twitchEmbedRef = useRef<HTMLDivElement>(null);
   const [twitchLoaded, setTwitchLoaded] = useState(false);
-  const twitchEmbedInstance = useRef<any>(null);
+  const twitchEmbedInstance = useRef<unknown>(null);
 
   useEffect(() => {
     if (status === 'unauthenticated') {
