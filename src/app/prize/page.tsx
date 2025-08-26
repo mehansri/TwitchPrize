@@ -266,7 +266,12 @@ export default function Home() {
       return;
     }
 
-    const requestBody: any = {
+    const requestBody: {
+      prizeName: string;
+      boxNumber: number;
+      userEmail?: string;
+      paymentId?: string;
+    } = {
       prizeName: prize.prize,
       boxNumber: boxNum,
     };
