@@ -59,7 +59,7 @@ export default function RegisterPage() {
 
       if (response.ok) {
         // Redirect to login page after successful signup
-        router.push('/login?message=Account created successfully! Please log in.');
+        router.push('/?message=Account created successfully! Please log in.');
       } else {
         setError(data.error || 'Something went wrong');
       }
@@ -80,7 +80,7 @@ export default function RegisterPage() {
           <p className="mt-2 text-center text-sm text-gray-300">
             Or{' '}
             <Link
-              href="/login"
+              href="/"
               className="font-medium text-blue-400 hover:text-blue-300"
             >
               sign in to your existing account
