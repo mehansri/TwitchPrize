@@ -173,12 +173,14 @@ export default function Home() {
       if (isAuthorized) {
         const loadedBoxes = loadBoxesFromStorage();
         setBoxes(loadedBoxes);
+        
+        // Purple box logic is working correctly!
       }
     }
   }, [session, status]);
 
   // 🔓 Check if a box should be available based on unlock thresholds
-  const isBoxAvailable = (box: { prize: string; value: number; opened: boolean; glow: string }) => {
+  const isBoxAvailable = (box: { prize: string; value: number; opened: boolean; glow: string }, boxNumber?: number) => {
     const openedCount = Object.values(boxes).filter(b => b.opened).length;
     
     // Gold boxes (premium prizes) unlock after 800+ boxes opened
@@ -186,9 +188,29 @@ export default function Home() {
       return false;
     }
     
-    // Purple boxes (high-tier prizes) unlock after 600+ boxes opened
-    if (box.glow === "purple" && openedCount < 600) {
-      return false;
+    // Purple boxes logic: half available from start, half after 600+ boxes
+    if (box.glow === "purple") {
+      // Get all purple box positions to determine which half this box belongs to
+      const purpleBoxPositions = Object.entries(boxes)
+        .filter(([_, b]) => b.glow === "purple")
+        .map(([pos, _]) => parseInt(pos))
+        .sort((a, b) => a - b); // Sort by position
+      
+      const currentBoxPosition = boxNumber || 
+        parseInt(Object.entries(boxes).find(([_, b]) => b === box)?.[0] || "0");
+      
+      if (currentBoxPosition) {
+        const boxIndex = purpleBoxPositions.indexOf(currentBoxPosition);
+        const halfwayPoint = Math.floor(purpleBoxPositions.length / 2);
+        
+
+        
+        // First half (lower indices) are available from start
+        // Second half (higher indices) unlock after 600+ boxes
+        if (boxIndex >= halfwayPoint && openedCount < 600) {
+          return false;
+        }
+      }
     }
     
     return true;
@@ -327,13 +349,20 @@ export default function Home() {
     const box = boxes[boxNum];
     
     // Check if box is available for opening
-    if (!isBoxAvailable(box)) {
+    if (!isBoxAvailable(box, boxNum)) {
       const openedCount = Object.values(boxes).filter(b => b.opened).length;
-      const requiredCount = box.glow === "gold" ? 800 : 600;
+      
+      let message = `This box is temporarily unavailable. Continue opening boxes to unlock new tiers!`;
+      
+      if (box.glow === "purple" && openedCount < 600) {
+        message = `This tier box is locked.`;
+      } else if (box.glow === "gold" && openedCount < 800) {
+        message = `This tier box is locked.`;
+      }
       
       // Instead of revealing the box content, show a generic message
       // This prevents users from learning which boxes contain premium prizes
-      alert(`This box is temporarily unavailable. Continue opening boxes to unlock new tiers!`);
+      alert(message);
       return;
     }
 
@@ -367,7 +396,7 @@ export default function Home() {
     if (showManualOpener && (selectedUser || manualUserEmail)) {
       const availableUnopenedBoxes = Object.keys(boxes).filter((boxNum) => {
         const box = boxes[parseInt(boxNum)];
-        return !box.opened && isBoxAvailable(box);
+        return !box.opened && isBoxAvailable(box, parseInt(boxNum));
       });
       if (availableUnopenedBoxes.length === 0) {
         alert("No available boxes to open.");
@@ -384,19 +413,18 @@ export default function Home() {
     // Filter boxes that are both unopened AND available based on unlock thresholds
     const availableUnopenedBoxes = Object.keys(boxes).filter((boxNum) => {
       const box = boxes[parseInt(boxNum)];
-      return !box.opened && isBoxAvailable(box);
+      return !box.opened && isBoxAvailable(box, parseInt(boxNum));
     });
     
     if (availableUnopenedBoxes.length === 0) {
       // Check if there are any unopened boxes that are just locked
       const lockedUnopenedBoxes = Object.keys(boxes).filter((boxNum) => {
         const box = boxes[parseInt(boxNum)];
-        return !box.opened && !isBoxAvailable(box);
+        return !box.opened && !isBoxAvailable(box, parseInt(boxNum));
       });
       
       if (lockedUnopenedBoxes.length > 0) {
-        const nextUnlock = openedCount < 600 ? 600 : 800;
-        alert(`All available boxes have been opened! You need to open ${nextUnlock - openedCount} more boxes to unlock the next tier.`);
+        alert("All available boxes have been opened! More boxes will unlock as you continue.");
       } else {
         alert("All boxes have been opened!");
       }
@@ -492,6 +520,12 @@ export default function Home() {
   // Count opened boxes for display
   const openedCount = Object.values(boxes).filter(box => box.opened).length;
   const totalBoxes = Object.keys(boxes).length;
+  
+  // Debug: Count available purple boxes
+  const availablePurpleBoxes = Object.entries(boxes).filter(([boxNumStr, box]) => {
+    const boxNum = parseInt(boxNumStr);
+    return box.glow === "purple" && !box.opened && isBoxAvailable(box, boxNum);
+  }).length;
 
   // Show loading state while checking authentication
   if (status === "loading") {
@@ -556,12 +590,10 @@ export default function Home() {
           </span>
           {openedCount < 600 && (
             <div style={{ marginTop: "5px", fontSize: "12px", color: "#6f42c1" }}>
-              🔒 Purple tier unlocks in {600 - openedCount} more boxes
             </div>
           )}
           {openedCount >= 600 && openedCount < 800 && (
             <div style={{ marginTop: "5px", fontSize: "12px", color: "#FFD700" }}>
-              🔒 Gold tier unlocks in {800 - openedCount} more boxes
             </div>
           )}
           {openedCount >= 800 && (
@@ -741,7 +773,7 @@ export default function Home() {
           const box = boxes[boxNum];
           const shouldHighlight = !searchTerm || boxNumStr === searchTerm;
           const glowColor = getGlowColor(box.glow);
-          const isAvailable = isBoxAvailable(box);
+          const isAvailable = isBoxAvailable(box, boxNum);
           const isLocked = !box.opened && !isAvailable;
           
           return (
