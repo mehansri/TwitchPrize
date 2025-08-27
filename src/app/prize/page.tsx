@@ -296,13 +296,13 @@ export default function Home() {
       if (response.ok) {
 
 
-        alert(`Prize "${prize.prize}" opened for ${finalUserEmail || 'selected user'}!`);
         const newBoxes = { ...boxes };
         newBoxes[boxNum].opened = true;
         setBoxes(newBoxes);
         saveBoxesToStorage(newBoxes);
-        handleManualPrizeOpened(prize.prize, finalUserEmail || 'selected user');
         // After successful opening, refresh pending users list
+        animateManualPrizeReveal(boxNum);
+
         fetchPendingUsers();
         setSelectedUser(""); // Clear selected user
         setManualUserEmail(""); // Clear manual email
@@ -461,6 +461,34 @@ export default function Home() {
     alert(`🎉 Prize "${prize}" has been opened for ${userEmail} and tracked in the system!`);
   };
 
+  const animateManualPrizeReveal = (boxNum: number) => {
+    const box = boxes[boxNum];
+    if (!box) return;
+  
+    setRevealedPrize(box);
+  
+    const boxElement = document.querySelector(`[data-box-num='${boxNum}']`);
+    if (boxElement) {
+      gsap.to(boxElement, {
+        duration: 0.5,
+        scale: 1.2,
+        rotation: 360,
+        onComplete: () => {
+          const newBoxes = { ...boxes };
+          newBoxes[boxNum].opened = true;
+          setBoxes(newBoxes);
+          saveBoxesToStorage(newBoxes);
+  
+          setTimeout(() => {
+            reshuffleBoxesOnUnlock();
+          }, 1000);
+  
+          gsap.to(modalRef.current, { duration: 0.5, autoAlpha: 1 });
+        },
+      });
+    }
+  };
+  
   // Count opened boxes for display
   const openedCount = Object.values(boxes).filter(box => box.opened).length;
   const totalBoxes = Object.keys(boxes).length;
