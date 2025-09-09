@@ -554,7 +554,7 @@ export default function Home() {
       const syncedBoxes = await syncBoxesWithDatabase();
       if (syncedBoxes) {
         setBoxes(syncedBoxes);
-        alert(`✅ Successfully synced boxes with database! Found ${Object.values(syncedBoxes).filter((b: any) => b.opened).length} opened prizes.`);
+        alert(`✅ Successfully synced boxes with database! Found ${(Object.values(syncedBoxes) as { prize: string; value: number; opened: boolean; glow: string }[]).filter(b => b.opened).length} opened prizes.`);
       } else {
         alert("❌ Failed to sync boxes with database. Please try again.");
       }
