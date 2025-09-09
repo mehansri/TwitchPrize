@@ -2,7 +2,7 @@
 
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { isUserAuthorized } from '@/lib/config';
 
 interface PrizeClaim {
@@ -52,13 +52,7 @@ export default function AdminDashboard() {
     }
   }, [session, status, router]);
 
-  useEffect(() => {
-    if (status === 'authenticated') {
-      fetchPrizeClaims();
-    }
-  }, [status, filter]);
-
-  const fetchPrizeClaims = async () => {
+  const fetchPrizeClaims = useCallback(async () => {
     try {
       const response = await fetch(`/api/admin/prize-claims?filter=${filter}`);
       if (response.ok) {
@@ -75,7 +69,13 @@ export default function AdminDashboard() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [filter]);
+
+  useEffect(() => {
+    if (status === 'authenticated') {
+      fetchPrizeClaims();
+    }
+  }, [status, filter, fetchPrizeClaims]);
   
 
   
