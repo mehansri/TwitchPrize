@@ -7,24 +7,38 @@ import { useRouter } from "next/navigation";
 import { isUserAuthorized } from "@/lib/config";
 import Link from "next/link";
 
+/**
+ * PRIZE SYSTEM UPDATES:
+ * - Removed claimed prizes from prize pool (reduced counts)
+ * - Locked specific box numbers as pre-opened: 3, 14, 17, 19, 27, 95, 101, 115, 126, 229, 420, 427, 442, 508, 729, 927
+ * - These boxes will always appear as opened (🎉) and cannot be opened again
+ * - Prize pool counts updated to reflect actual remaining prizes
+ */
+
 // 🎁 Define your prize pool with counts (odds still apply)
+// Updated to remove claimed prizes
 const prizePool = [
   { prize: "Unified Minds Booster Box", count: 1, value: 120, glow: "gold" },
   { prize: "151 UPC", count: 1, value: 100, glow: "gold" },
   { prize: "151 ETB", count: 1, value: 50, glow: "gold" },
-  { prize: "Random Pack", count: 120, value: 5, glow: "blue" },
-  { prize: "Random Single (Low-tier)", count: 420, value: 2, glow: "green" },
-  { prize: "Random Single (Mid-tier)", count: 20, value: 15, glow: "blue" },
+  { prize: "Random Pack", count: 119, value: 5, glow: "blue" }, // Reduced by 1 (claimed by Radius)
+  { prize: "Random Single (Low-tier)", count: 415, value: 2, glow: "green" }, // Reduced by 5 (claimed by Batman, Lazy x4)
+  { prize: "Random Single (Mid-tier)", count: 19, value: 15, glow: "blue" }, // Reduced by 1 (claimed by Lazy)
   { prize: "Random Single (High-tier)", count: 12, value: 35, glow: "purple" },
-  { prize: "Spin Punishment Wheel", count: 60, value: 0, glow: "green" },
-  { prize: "Vintage Card Bundle", count: 20, value: 40, glow: "blue" },
+  { prize: "Spin Punishment Wheel", count: 59, value: 0, glow: "green" }, // Reduced by 1 (claimed by Dean)
+  { prize: "Vintage Card Bundle", count: 19, value: 40, glow: "blue" }, // Reduced by 1 (claimed by Caps)
   { prize: "Magic Booster Pack", count: 20, value: 5, glow: "blue" },
   { prize: "Next Box 50% Off", count: 40, value: 0, glow: "blue" },
-  { prize: "Womp Womp", count: 170, value: 0, glow: "green" },
-  { prize: "Gem Depo (Boxed)", count: 50, value: 25, glow: "green" },
+  { prize: "Womp Womp", count: 168, value: 0, glow: "green" }, // Reduced by 2 (claimed by M62song, PWM)
+  { prize: "Gem Depo (Boxed)", count: 49, value: 25, glow: "green" }, // Reduced by 1 (claimed by Lazy)
   { prize: "Random Slab", count: 25, value: 30, glow: "purple" },
   { prize: "Random Pokémon Merch (Pick)", count: 20, value: 20, glow: "purple" },
-  { prize: "Custom Pokémon Art", count: 20, value: 15, glow: "purple" },
+  { prize: "Custom Pokémon Art", count: 19, value: 15, glow: "purple" }, // Reduced by 1 (claimed by Matt)
+];
+
+// 🔒 Pre-opened boxes that should be locked as opened
+const preOpenedBoxes = [
+  3, 14, 17, 19, 27, 95, 101, 115, 126, 229, 420, 427, 442, 508, 729, 927
 ];
 
 // 🔀 Generate 1000 shuffled boxes
@@ -54,6 +68,13 @@ function generateBoxes() {
     boxMap[idx + 1] = prize;
   });
 
+  // 🔒 Lock pre-opened boxes as opened
+  preOpenedBoxes.forEach((boxNum) => {
+    if (boxMap[boxNum]) {
+      boxMap[boxNum].opened = true;
+    }
+  });
+
   return boxMap;
 }
 
@@ -64,7 +85,14 @@ function loadBoxesFromStorage() {
   const stored = localStorage.getItem('mysteryBoxes');
   if (stored) {
     try {
-      return JSON.parse(stored);
+      const boxes = JSON.parse(stored);
+      // 🔒 Ensure pre-opened boxes are locked as opened
+      preOpenedBoxes.forEach((boxNum) => {
+        if (boxes[boxNum]) {
+          boxes[boxNum].opened = true;
+        }
+      });
+      return boxes;
     } catch (error) {
       console.error('Error parsing stored boxes:', error);
       return generateBoxes();
@@ -73,10 +101,60 @@ function loadBoxesFromStorage() {
   return generateBoxes();
 }
 
+// 🔄 Sync boxes with database to ensure opened prizes are preserved
+async function syncBoxesWithDatabase() {
+  try {
+    const response = await fetch('/api/admin/prize-claims');
+    if (response.ok) {
+      const data = await response.json();
+      if (data.success && data.openedBoxes) {
+        // Load current boxes from storage
+        const currentBoxes = loadBoxesFromStorage();
+        
+        // Merge opened boxes from database with current boxes
+        const syncedBoxes = { ...currentBoxes };
+        Object.entries(data.openedBoxes).forEach(([boxNum, boxData]) => {
+          const num = parseInt(boxNum);
+          const boxDataTyped = boxData as { prize: string; value: number; opened: boolean; glow: string };
+          if (syncedBoxes[num]) {
+            syncedBoxes[num].opened = true;
+            syncedBoxes[num].prize = boxDataTyped.prize;
+            syncedBoxes[num].value = boxDataTyped.value;
+            syncedBoxes[num].glow = boxDataTyped.glow;
+          }
+        });
+        
+        // 🔒 Ensure pre-opened boxes are locked as opened
+        preOpenedBoxes.forEach((boxNum) => {
+          if (syncedBoxes[boxNum]) {
+            syncedBoxes[boxNum].opened = true;
+          }
+        });
+        
+        // Save synced boxes back to storage
+        saveBoxesToStorage(syncedBoxes);
+        return syncedBoxes;
+      }
+    }
+  } catch (error) {
+    console.error('Error syncing boxes with database:', error);
+  }
+  return null;
+}
+
 // 💾 Save boxes to localStorage
 function saveBoxesToStorage(boxes: { [key: number]: { prize: string; value: number; opened: boolean; glow: string } }) {
   if (typeof window === "undefined") return;
-  localStorage.setItem('mysteryBoxes', JSON.stringify(boxes));
+  
+  // 🔒 Ensure pre-opened boxes are locked as opened before saving
+  const boxesToSave = { ...boxes };
+  preOpenedBoxes.forEach((boxNum) => {
+    if (boxesToSave[boxNum]) {
+      boxesToSave[boxNum].opened = true;
+    }
+  });
+  
+  localStorage.setItem('mysteryBoxes', JSON.stringify(boxesToSave));
 }
 
 // 🌟 Get glow color for a prize
@@ -117,6 +195,7 @@ export default function Home() {
   const [pendingUsers, setPendingUsers] = useState<PendingUser[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(false);
   const [selectedUser, setSelectedUser] = useState("");
+  const [syncingBoxes, setSyncingBoxes] = useState(false);
   const modalRef = useRef(null);
 
   const fetchPendingUsers = async () => {
@@ -174,7 +253,14 @@ export default function Home() {
         const loadedBoxes = loadBoxesFromStorage();
         setBoxes(loadedBoxes);
         
-        // Purple box logic is working correctly!
+        // Auto-sync with database on load to ensure consistency
+        const autoSync = async () => {
+          const syncedBoxes = await syncBoxesWithDatabase();
+          if (syncedBoxes) {
+            setBoxes(syncedBoxes);
+          }
+        };
+        autoSync();
       }
     }
   }, [session, status]);
@@ -381,6 +467,9 @@ export default function Home() {
           setBoxes(newBoxes);
           saveBoxesToStorage(newBoxes); // Save to localStorage
           
+          // Track this opening in database (admin direct click)
+          handleAdminDirectBoxOpening(boxNum, box);
+          
           // Check if we need to reshuffle after this box opening
           setTimeout(() => {
             reshuffleBoxesOnUnlock();
@@ -456,6 +545,50 @@ export default function Home() {
       const newBoxes = generateBoxes();
       setBoxes(newBoxes);
       saveBoxesToStorage(newBoxes);
+    }
+  };
+
+  const handleSyncBoxes = async () => {
+    setSyncingBoxes(true);
+    try {
+      const syncedBoxes = await syncBoxesWithDatabase();
+      if (syncedBoxes) {
+        setBoxes(syncedBoxes);
+        alert(`✅ Successfully synced boxes with database! Found ${Object.values(syncedBoxes).filter((b: any) => b.opened).length} opened prizes.`);
+      } else {
+        alert("❌ Failed to sync boxes with database. Please try again.");
+      }
+    } catch (error) {
+      console.error("Error syncing boxes:", error);
+      alert("❌ Error syncing boxes with database.");
+    } finally {
+      setSyncingBoxes(false);
+    }
+  };
+
+  // Track admin direct box openings in database
+  const handleAdminDirectBoxOpening = async (boxNum: number, box: { prize: string; value: number; opened: boolean; glow: string }) => {
+    try {
+      const response = await fetch('/api/admin/direct-box-opening', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          boxNumber: boxNum,
+          prizeName: box.prize,
+          prizeValue: box.value,
+          prizeGlow: box.glow,
+        }),
+      });
+
+      if (response.ok) {
+        console.log(`✅ Box ${boxNum} opening tracked in database`);
+      } else {
+        console.error(`❌ Failed to track box ${boxNum} opening in database`);
+      }
+    } catch (error) {
+      console.error("Error tracking box opening:", error);
     }
   };
 
@@ -602,6 +735,19 @@ export default function Home() {
             </div>
           )}
         </div>
+        <div style={{ 
+          marginBottom: "15px", 
+          padding: "10px", 
+          backgroundColor: "rgba(255, 193, 7, 0.1)", 
+          border: "1px solid #ffc107", 
+          borderRadius: "5px",
+          fontSize: "12px",
+          color: "#856404"
+        }}>
+          ⚠️ <strong>Important:</strong> If you've recently deployed updates or cleared browser cache, 
+          click "🔄 Sync with Database" to restore opened prizes from the database.
+        </div>
+
         <input
           type="text"
           id="searchBox"
@@ -671,6 +817,29 @@ export default function Home() {
             onMouseOut={(e) => (e.currentTarget.style.backgroundColor = "#6f42c1")}
           >
             {showManualOpener ? "🔒 Hide Manual Opener" : "🎁 Manual Prize Opener"}
+          </button>
+          <button
+            onClick={handleSyncBoxes}
+            disabled={syncingBoxes}
+            style={{
+              padding: "12px 24px",
+              fontSize: "16px",
+              backgroundColor: syncingBoxes ? "#6c757d" : "#28a745",
+              color: "white",
+              border: "none",
+              borderRadius: "5px",
+              cursor: syncingBoxes ? "not-allowed" : "pointer",
+              fontWeight: "bold",
+              transition: "background-color 0.2s ease-in-out",
+            }}
+            onMouseOver={(e) => {
+              if (!syncingBoxes) e.currentTarget.style.backgroundColor = "#218838";
+            }}
+            onMouseOut={(e) => {
+              if (!syncingBoxes) e.currentTarget.style.backgroundColor = "#28a745";
+            }}
+          >
+            {syncingBoxes ? "🔄 Syncing..." : "🔄 Sync with Database"}
           </button>
         </div>
 

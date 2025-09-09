@@ -18,55 +18,46 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 
-    const { searchParams } = new URL(request.url);
-    const filter = searchParams.get('filter') || 'all';
-
-    // Build the where clause based on filter
-    const whereClause: { status?: 'PENDING_ADMIN_OPEN' | 'OPENED' | 'DELIVERED' } = {};
-    
-    if (filter === 'pending') {
-      whereClause.status = 'PENDING_ADMIN_OPEN';
-    } else if (filter === 'opened') {
-      whereClause.status = 'OPENED';
-    } else if (filter === 'delivered') {
-      whereClause.status = 'DELIVERED';
-    }
-    // 'all' filter doesn't add any where clause
-
-    const prizeClaims = await prisma.prizeClaim.findMany({
-      where: whereClause,
+    // Fetch all opened prize claims (including direct openings)
+    const openedClaims = await prisma.prizeClaim.findMany({
+      where: {
+        status: 'OPENED',
+      },
       include: {
-        user: {
-          select: {
-            name: true,
-            email: true,
-          },
-        },
-        payment: {
-          select: {
-            amount: true,
-            currency: true,
-          },
-        },
-        prizeType: {
-          select: {
-            name: true,
-            value: true,
-            glow: true,
-          },
-        },
+        prizeType: true,
+        user: true,
       },
       orderBy: {
-        createdAt: 'desc',
+        openedAt: 'asc',
       },
     });
 
-    return NextResponse.json({ prizeClaims });
+    // Transform the data to match the local storage format
+    const openedBoxes: { [key: number]: { prize: string; value: number; opened: boolean; glow: string } } = {};
+    
+    openedClaims.forEach((claim, index) => {
+      if (claim.prizeType) {
+        // Use the box number from the notes if available, otherwise use index + 1
+        const boxNumberMatch = claim.notes?.match(/box #(\d+)/);
+        const boxNumber = boxNumberMatch ? parseInt(boxNumberMatch[1]) : index + 1;
+        
+        openedBoxes[boxNumber] = {
+          prize: claim.prizeType.name,
+          value: claim.prizeType.value,
+          opened: true,
+          glow: claim.prizeType.glow,
+        };
+      }
+    });
+
+    return NextResponse.json({
+      success: true,
+      openedBoxes,
+      totalOpened: openedClaims.length,
+    });
+
   } catch (error) {
-    console.error('Error fetching prize claims:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    console.error('Error fetching opened prize claims:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

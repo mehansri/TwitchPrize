@@ -63,16 +63,20 @@ export default function AdminDashboard() {
       const response = await fetch(`/api/admin/prize-claims?filter=${filter}`);
       if (response.ok) {
         const data = await response.json();
-        setPrizeClaims(data.prizeClaims);
+        // Ensure it's always an array
+        setPrizeClaims(Array.isArray(data.prizeClaims) ? data.prizeClaims : []);
       } else {
         console.error('Failed to fetch prize claims');
+        setPrizeClaims([]); // fallback
       }
     } catch (error) {
       console.error('Error fetching prize claims:', error);
+      setPrizeClaims([]); // fallback
     } finally {
       setLoading(false);
     }
   };
+  
 
   
 

@@ -45,7 +45,7 @@ export async function POST(req: NextRequest) {
               name: 'Prize Unlock',
               description: 'Unlock a special prize with this one-time payment',
             },
-            unit_amount: 500, // $10.00 in cents
+            unit_amount: 1200, // $10.00 in cents
           },
           quantity: 1,
         },

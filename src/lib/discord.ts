@@ -338,6 +338,55 @@ export class DiscordNotifier {
       avatar_url: 'https://cdn.discordapp.com/emojis/1279952661629419520.webp?size=96&quality=lossless',
     });
   }
+
+  // Direct box opening by admin (no user assigned)
+  async notifyDirectBoxOpening(adminName: string, boxNumber: number, prizeName: string, prizeValue: number): Promise<void> {
+    const embed: DiscordEmbed = {
+      title: '🎲 Direct Box Opening',
+      description: 'An admin has directly opened a box (no user assigned).',
+      color: 0xff6b6b, // Red-orange
+      fields: [
+        {
+          name: '👨‍💼 Admin',
+          value: adminName,
+          inline: true,
+        },
+        {
+          name: '📦 Box Number',
+          value: `#${boxNumber}`,
+          inline: true,
+        },
+        {
+          name: '🎁 Prize',
+          value: prizeName,
+          inline: true,
+        },
+        {
+          name: '💰 Value',
+          value: `$${(prizeValue / 100).toFixed(2)}`,
+          inline: true,
+        },
+        {
+          name: '⚠️ Status',
+          value: 'No user assigned',
+          inline: true,
+        },
+        {
+          name: '⏰ Time',
+          value: new Date().toLocaleString(),
+          inline: true,
+        },
+      ],
+      timestamp: new Date().toISOString(),
+    };
+
+    await this.sendWebhook({
+      content: '🎲 **Direct Box Opening** - Admin opened box without assigning user',
+      embeds: [embed],
+      username: 'Prize Bot',
+      avatar_url: 'https://cdn.discordapp.com/emojis/1279952661629419520.webp?size=96&quality=lossless',
+    });
+  }
 }
 
 // Export singleton instance

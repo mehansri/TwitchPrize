@@ -1,7 +1,7 @@
 // 🔐 Configuration for prize page access control
 export const PRIZE_PAGE_CONFIG = {
   // Set this to the email of the person who should have access
-  AUTHORIZED_USER_EMAIL: process.env.AUTHORIZED_USER_EMAIL || "nabil.kamaldeen@gmail.com",
+  AUTHORIZED_USER_EMAIL: process.env.AUTHORIZED_USER_EMAIL || "srime4080@gmail.com",
   
   // Optional: Set this to the user ID for additional security
   AUTHORIZED_USER_ID: process.env.AUTHORIZED_USER_ID || "your-user-id",
