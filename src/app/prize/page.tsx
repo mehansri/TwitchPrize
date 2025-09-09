@@ -744,8 +744,9 @@ export default function Home() {
           fontSize: "12px",
           color: "#856404"
         }}>
-          ⚠️ <strong>Important:</strong> If you've recently deployed updates or cleared browser cache, 
-          click "🔄 Sync with Database" to restore opened prizes from the database.
+⚠️ <strong>Important:</strong> If you&apos;ve recently deployed updates or cleared browser cache, 
+click &quot;🔄 Sync with Database&quot; to restore opened prizes from the database.
+
         </div>
 
         <input
