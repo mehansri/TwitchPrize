@@ -4,7 +4,7 @@ import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { isUserAuthorized } from '@/lib/config';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
     
@@ -18,46 +18,121 @@ export async function GET() {
       return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 
-    // Fetch all opened prize claims (including direct openings)
-    const openedClaims = await prisma.prizeClaim.findMany({
-      where: {
-        status: 'OPENED',
-      },
+    // Get filter parameter from query string
+    const searchParams = request.nextUrl.searchParams;
+    const filter = searchParams.get('filter') || 'all';
+    const format = searchParams.get('format'); // 'boxes' for openedBoxes format, otherwise full prize claims
+
+    // Build where clause based on filter
+    let whereClause: any = {};
+    if (filter === 'pending') {
+      whereClause.status = 'PENDING_ADMIN_OPEN';
+    } else if (filter === 'opened') {
+      whereClause.status = 'OPENED';
+    } else if (filter === 'delivered') {
+      whereClause.status = 'DELIVERED';
+    }
+    // 'all' means no status filter
+
+    // If format is 'boxes', return the openedBoxes format for prize page
+    if (format === 'boxes') {
+      const openedClaims = await prisma.prizeClaim.findMany({
+        where: {
+          status: 'OPENED',
+          ...whereClause,
+        },
+        include: {
+          prizeType: true,
+          user: true,
+        },
+        orderBy: {
+          openedAt: 'asc',
+        },
+      });
+
+      // Transform the data to match the local storage format
+      const openedBoxes: { [key: number]: { prize: string; value: number; opened: boolean; glow: string } } = {};
+      
+      openedClaims.forEach((claim, index) => {
+        if (claim.prizeType) {
+          // Use the box number from the notes if available, otherwise use index + 1
+          const boxNumberMatch = claim.notes?.match(/box #(\d+)/i);
+          const boxNumber = boxNumberMatch ? parseInt(boxNumberMatch[1]) : index + 1;
+          
+          openedBoxes[boxNumber] = {
+            prize: claim.prizeType.name,
+            value: claim.prizeType.value,
+            opened: true,
+            glow: claim.prizeType.glow,
+          };
+        }
+      });
+
+      return NextResponse.json({
+        success: true,
+        openedBoxes,
+        totalOpened: openedClaims.length,
+      });
+    }
+
+    // Otherwise, return full prize claims list for admin page
+    const prizeClaims = await prisma.prizeClaim.findMany({
+      where: whereClause,
       include: {
-        prizeType: true,
-        user: true,
+        prizeType: {
+          select: {
+            name: true,
+            value: true,
+            glow: true,
+          },
+        },
+        user: {
+          select: {
+            name: true,
+            email: true,
+          },
+        },
+        payment: {
+          select: {
+            amount: true,
+            currency: true,
+          },
+        },
       },
       orderBy: {
-        openedAt: 'asc',
+        createdAt: 'desc',
       },
     });
 
-    // Transform the data to match the local storage format
-    const openedBoxes: { [key: number]: { prize: string; value: number; opened: boolean; glow: string } } = {};
-    
-    openedClaims.forEach((claim, index) => {
-      if (claim.prizeType) {
-        // Use the box number from the notes if available, otherwise use index + 1
-        const boxNumberMatch = claim.notes?.match(/box #(\d+)/);
-        const boxNumber = boxNumberMatch ? parseInt(boxNumberMatch[1]) : index + 1;
-        
-        openedBoxes[boxNumber] = {
-          prize: claim.prizeType.name,
-          value: claim.prizeType.value,
-          opened: true,
-          glow: claim.prizeType.glow,
-        };
-      }
-    });
+    // Transform the data to match the expected format
+    const formattedClaims = prizeClaims.map(claim => ({
+      id: claim.id,
+      status: claim.status,
+      createdAt: claim.createdAt.toISOString(),
+      openedAt: claim.openedAt?.toISOString(),
+      notes: claim.notes,
+      user: {
+        name: claim.user.name || 'Unknown',
+        email: claim.user.email || '',
+      },
+      payment: claim.payment ? {
+        amount: claim.payment.amount,
+        currency: claim.payment.currency,
+      } : undefined,
+      prizeType: claim.prizeType ? {
+        name: claim.prizeType.name,
+        value: claim.prizeType.value,
+        glow: claim.prizeType.glow,
+      } : undefined,
+    }));
 
     return NextResponse.json({
       success: true,
-      openedBoxes,
-      totalOpened: openedClaims.length,
+      prizeClaims: formattedClaims,
     });
 
   } catch (error) {
-    console.error('Error fetching opened prize claims:', error);
+    console.error('Error fetching prize claims:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

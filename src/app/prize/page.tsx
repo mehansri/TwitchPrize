@@ -104,7 +104,7 @@ function loadBoxesFromStorage() {
 // 🔄 Sync boxes with database to ensure opened prizes are preserved
 async function syncBoxesWithDatabase() {
   try {
-    const response = await fetch('/api/admin/prize-claims');
+    const response = await fetch('/api/admin/prize-claims?format=boxes');
     if (response.ok) {
       const data = await response.json();
       if (data.success && data.openedBoxes) {
