@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { isUserAuthorized } from '@/lib/config';
+import { Prisma } from '@prisma/client';
 
 export async function GET(request: NextRequest) {
   try {
@@ -24,22 +25,17 @@ export async function GET(request: NextRequest) {
     const format = searchParams.get('format'); // 'boxes' for openedBoxes format, otherwise full prize claims
 
     // Build where clause based on filter
-    let whereClause: any = {};
-    if (filter === 'pending') {
-      whereClause.status = 'PENDING_ADMIN_OPEN';
-    } else if (filter === 'opened') {
-      whereClause.status = 'OPENED';
-    } else if (filter === 'delivered') {
-      whereClause.status = 'DELIVERED';
-    }
-    // 'all' means no status filter
+    const whereClause: Prisma.PrizeClaimWhereInput = 
+      filter === 'pending' ? { status: 'PENDING_ADMIN_OPEN' } :
+      filter === 'opened' ? { status: 'OPENED' } :
+      filter === 'delivered' ? { status: 'DELIVERED' } :
+      {}; // 'all' means no status filter
 
     // If format is 'boxes', return the openedBoxes format for prize page
     if (format === 'boxes') {
       const openedClaims = await prisma.prizeClaim.findMany({
         where: {
-          status: 'OPENED',
-          ...whereClause,
+          status: 'OPENED', // Always filter for OPENED status when syncing boxes
         },
         include: {
           prizeType: true,
